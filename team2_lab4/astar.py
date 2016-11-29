@@ -80,25 +80,6 @@ class Node:
 		
 
 
-def copyMap(data):
-	global mapGrid
-	global mapData
-	global width
-	global height
-	global mapgrid
-	global resolution
-	global offsetX
-	global offsetY
-	mapGrid = data
-	resolution = data.info.resolution
-	mapData = data.data
-	width = data.info.width
-	height = data.info.height
-	offsetX = data.info.origin.position.x
-	offsetY = data.info.origin.position.y
-	initGrid(mapGrid)
-
-
 def Solve(start, goal, node):	
 	shortest = 0
 	current = node
@@ -123,7 +104,8 @@ def Solve(start, goal, node):
 		#					child = i
 		#					shortest = i.CalF()
 		#else:
-		for i in current.children:	
+		for i in current.children:
+			print i.coor	
 			if(shortest == 0):
 				child = i
 				shortest = i.CalF()

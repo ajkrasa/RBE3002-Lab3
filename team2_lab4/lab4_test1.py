@@ -192,6 +192,22 @@ def rvizPath(cell_list, worldMap):
 
 '''----------------------------------------Update Cells Function-----------------------------------------'''
 
+def publishFrontier(grid):
+	global pub_frontier
+		# resolution and offset of the map
+	k=0
+	cells = GridCells()
+	cells.header.frame_id = 'map'
+	cells.cell_width = resolution 
+	cells.cell_height = resolution
+
+	for node in grid:
+		point=Point()
+		point = worldToGrid(worldPoint, worldMap)
+		cells.cells.append(point)
+	pub_frontier.publish(cells)
+
+
 def publishCells(grid):
 	global pub
 	
@@ -437,11 +453,13 @@ if __name__ == '__main__':
 	global path_pub
 	global waypoints_pub
 	global nav_pub
+	global pub_frontier
 
 	path_pub = rospy.Publisher('/lab4/path', GridCells, queue_size=1)
 	waypoints_pub = rospy.Publisher('/lab4/waypoints', Path, queue_size=1)
 	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
 	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
+	pub_frontier = rospy.Publisher('map_frontier', GridCells, queue_size=1)
 
 	rospy.sleep(1)
 
@@ -454,7 +472,6 @@ if __name__ == '__main__':
 	
 	while not rospy.is_shutdown():
 		path = Path()
-		#print mapData
 		publishCells(world_data)
 		flag_cache = neworldMap_flag
 		neworldMap_flag = 0

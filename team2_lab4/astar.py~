@@ -37,6 +37,8 @@ class Node:
 		for i in range(0, height): #height should be set to hieght of grid
 			for j in range(0, width): #width should be set to width of grid
 				#if a gridcell is occupied no child is made in that gridcell
+				print self.grid.data[i*width+j]
+				rospy.sleep(.5)
 				if (self.grid.data[i*width+j] == 100):
 					pass
 				elif (self.grid.data[(i+1)*width+j] == 100):
@@ -80,25 +82,6 @@ class Node:
 		
 
 
-def copyMap(data):
-	global mapGrid
-	global mapData
-	global width
-	global height
-	global mapgrid
-	global resolution
-	global offsetX
-	global offsetY
-	mapGrid = data
-	resolution = data.info.resolution
-	mapData = data.data
-	width = data.info.width
-	height = data.info.height
-	offsetX = data.info.origin.position.x
-	offsetY = data.info.origin.position.y
-	initGrid(mapGrid)
-
-
 def Solve(start, goal, node):	
 	shortest = 0
 	current = node
@@ -123,7 +106,8 @@ def Solve(start, goal, node):
 		#					child = i
 		#					shortest = i.CalF()
 		#else:
-		for i in current.children:	
+		for i in current.children:
+			print i.coor	
 			if(shortest == 0):
 				child = i
 				shortest = i.CalF()
@@ -136,8 +120,8 @@ def Solve(start, goal, node):
 			closedset.append(current.coor)
 			current = child
 			child = 0
-			#rospy.sleep(1)
-			#print start, current.coor, goal
+			rospy.sleep(1)
+			print start, current.coor, goal
 			#print current.coor == goal
 		shortest = 0
 	node.path.append(current.coor)
