@@ -9,7 +9,7 @@ from tf.transformations import quaternion_from_euler
 import tf
 import numpy
 import math
-import rospy, tf, numpy, math
+import rospy, tf, numpy, math, sys
 
 class Node:
 	def __init__(self,value, coor, start, goal, grid):
@@ -38,29 +38,88 @@ class Node:
 			for j in range(0, width): #width should be set to width of grid
 				#if a gridcell is occupied no child is made in that gridcell
 				if (self.grid.data[i*width+j] == 100):
-					pass
+					if(x+1 == i and y == j):
+						child1 = Node(sys.maxint, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(sys.maxint, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(sys.maxint, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(sys.maxint, (x, y-1), s, g, m)
+						self.children.append(child4)
+
 				elif (self.grid.data[(i+1)*width+j] == 100):
-					pass
+					if(x+1 == i and y == j):
+						child1 = Node(sys.maxint, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(sys.maxint, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(sys.maxint, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(sys.maxint, (x, y-1), s, g, m)
+						self.children.append(child4)
+
 				elif (self.grid.data[i*width+(j+1)] == 100):
-					pass
+					if(x+1 == i and y == j):
+						child1 = Node(sys.maxint, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(sys.maxint, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(sys.maxint, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(sys.maxint, (x, y-1), s, g, m)
+						self.children.append(child4)
+
 				elif (self.grid.data[(i-1)*width+j] == 100):
-					pass
+					if(x+1 == i and y == j):
+						child1 = Node(sys.maxint, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(sys.maxint, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(sys.maxint, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(sys.maxint, (x, y-1), s, g, m)
+						self.children.append(child4)
+
 				elif (self.grid.data[i*width+(j-1)] == 100):
-					pass
-				elif(x+1 == i and y == j):
-					child1 = Node(v+1, (x+1, y), s, g, m)
-					self.children.append(child1)
-				elif(x == i and y+1 == j):
-					child2 = Node(v+1, (x, y+1), s, g, m)
-					self.children.append(child2)
-				elif(x-1 == i and y == j):
-					child3 = Node(v+1, (x-1, y), s, g, m)
-					self.children.append(child3)
-				elif(x == i and y-1 == j):
-					child4 = Node(v+1, (x, y-1), s, g, m)
-					self.children.append(child4)
+					if(x+1 == i and y == j):
+						child1 = Node(sys.maxint, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(sys.maxint, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(sys.maxint, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(sys.maxint, (x, y-1), s, g, m)
+						self.children.append(child4)
+
 				else:
-					pass
+					if(x+1 == i and y == j):
+						child1 = Node(v+1, (x+1, y), s, g, m)
+						self.children.append(child1)
+					elif(x == i and y+1 == j):
+						child2 = Node(v+1, (x, y+1), s, g, m)
+						self.children.append(child2)
+					elif(x-1 == i and y == j):
+						child3 = Node(v+1, (x-1, y), s, g, m)
+						self.children.append(child3)
+					elif(x == i and y-1 == j):
+						child4 = Node(v+1, (x, y-1), s, g, m)
+						self.children.append(child4)
 		#print len(self.children)
 						
 

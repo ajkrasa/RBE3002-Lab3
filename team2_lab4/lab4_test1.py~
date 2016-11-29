@@ -217,7 +217,6 @@ def publishCells(grid):
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
-	print "inside publishCells"
 	for i in range(0,height): #height should be set to height of grid
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
@@ -472,7 +471,6 @@ if __name__ == '__main__':
 	
 	while not rospy.is_shutdown():
 		path = Path()
-		#print mapData
 		publishCells(world_data)
 		flag_cache = neworldMap_flag
 		neworldMap_flag = 0
@@ -524,7 +522,7 @@ if __name__ == '__main__':
 
 		# Running A*
 		print start_cc, goal_cc
-		generated_path = aStar(start_cc, goal_cc, map_cache)
+		generated_path = aStar(start_cc, goal_cc, world_map)
 		print "Finished running A* algorithm"
 
 		if generated_path != None and not rospy.is_shutdown():
