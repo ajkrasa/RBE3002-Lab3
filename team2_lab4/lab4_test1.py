@@ -15,36 +15,30 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 '''---------------------------------------Callback Functions--------------------------------------------'''
 
-def mapCallBack(data):
-	global mapGrid
-	global mapData
-	global width
-	global height
-	global mapgrid
-	global resolution
-	global offsetX
-	global offsetY
-	mapGrid = data
-	resolution = data.info.resolution
-	mapData = data.data
-	width = data.info.width
-	height = data.info.height
-	offsetX = data.info.origin.position.x
-	offsetY = data.info.origin.position.y
-	print data.info
-
-
 
 def readWorldMapCallback(data):
 	global world_map
 	global neworldMap_flag
 	global start_pose
 	global goal_pose
+	global world_data
+	global resolution
+	global offsetX
+	global offsetY
+	global width
+	global height
 
 	world_map = data
+	world_data = data.data
+	resolution = data.info.resolution
 	start_pose = None
 	goal_pose = None
 	neworldMap_flag = 1
+	offsetX = data.info.origin.position.x
+	offsetY = data.info.origin.position.y
+	width = data.info.width
+	height = data.info.height
+	print data.info
 
 def goalCallback(data):
 	global goal_pose
@@ -80,8 +74,6 @@ def readStart(startPos):
 	start_pose = tmp_pose
 
 
-def expand(map_data):
-	
 
 
 
@@ -100,9 +92,12 @@ def worldToGrid(worldPoint, worldMap):
 
 # (grid) -> (real world)
 def gridToWorld(gridPoint, worldMap):
-	print gridPoint[0]
-	gridx = float (gridPoint[0])
-	gridy = float (gridPoint[1])
+	print gridPoint[1]
+	gridx = float(gridPoint[0])
+	if(gridPoint[1] > 0):
+		gridy = float(gridPoint[1])
+	else:
+		print "Tuple Trouble"
 	res = worldMap.info.resolution
 	#print res
 	worldPoint = Point()
@@ -199,23 +194,17 @@ def rvizPath(cell_list, worldMap):
 
 def publishCells(grid):
 	global pub
-	#print "publishing"
-
+	
 	# resolution and offset of the map
 	k=-2
 	cells = GridCells()
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
-
+	print "inside publishCells"
 	for i in range(0,height): #height should be set to height of grid
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
-
-			#or grid[i+1*width+j+1] == 100
-			#or grid[i+1*width+j-1] == 100
-			#or grid[i-1*width+j+1] == 100
-			#or grid[i-1*width+j-1] == 100
 			if (grid[i*width+j] == 100):
 				point=Point()
 				point.x=(j*resolution)+offsetX + (.5 * resolution)
@@ -223,28 +212,28 @@ def publishCells(grid):
 				point.z=0
 				cells.cells.append(point)
 
-			elif (grid[i+1*width+j+1] == 100):
+			elif (grid[(i+1)*width+j] == 100):
 				point=Point()
 				point.x=(j*resolution) + offsetX + (.5 * resolution)
 				point.y=(i*resolution) + offsetY + (.5 * resolution)
 				point.z=0
 				cells.cells.append(point)
 
-			elif (grid[i+1*width+j-1] == 100):
+			elif (grid[i*width+(j+1)] == 100):
 				point=Point()
 				point.x=(j*resolution) + offsetX + (.5 * resolution)
 				point.y=(i*resolution) + offsetY + (.5 * resolution)
 				point.z=0
 				cells.cells.append(point)
 
-			elif (grid[i-1*width+j+1] == 100):
+			elif (grid[(i-1)*width+j] == 100):
 				point=Point()
 				point.x=(j*resolution) + offsetX + (.5 * resolution)
 				point.y=(i*resolution) + offsetY + (.5 * resolution)
 				point.z=0
 				cells.cells.append(point)
 
-			elif (grid[i-1*width+j-1] == 100):
+			elif (grid[i*width+(j-1)] == 100):
 				point=Point()
 				point.x=(j*resolution) + offsetX + (.5 * resolution)
 				point.y=(i*resolution) + offsetY + (.5 * resolution)
@@ -258,7 +247,7 @@ def publishCells(grid):
 def publishTwist(lin_vel, ang_vel):
 	global prev_twist
 	global nav_pub
-
+	
 	twist_msg = Twist();				#Create Twist Message
 	if lin_vel == 0 and ang_vel == 0:
 		twist_msg.linear.x = (prev_twist.linear.x)/3
@@ -393,6 +382,7 @@ def readOdom(msg):
 '''-------------------------------------------Main Function---------------------------------------------'''
 
 if __name__ == '__main__':
+	global pub
 
 	# Create Node
 	rospy.init_node('lab4')
@@ -403,7 +393,9 @@ if __name__ == '__main__':
 	global goal_pose
 	global start_pose
 	global cost_map
-
+	global world_data
+	global mapData
+	
 	# Global Variables for Navigation
 	global pose
 	global odom_tf
@@ -429,7 +421,6 @@ if __name__ == '__main__':
 
 	# Subscribers
 	world_map_sub = rospy.Subscriber('/map', OccupancyGrid, readWorldMapCallback)
-
 	odom_sub = rospy.Subscriber('/odom', Odometry, readOdom)
 	# cost_map_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, costMapCallback)
 
@@ -437,10 +428,8 @@ if __name__ == '__main__':
 	navgoal_sub = rospy.Subscriber('move_base_simple/2goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
 	goal_sub = rospy.Subscriber('initialpose', PoseWithCovarianceStamped, readStart, queue_size=1) #change topic for best results
 
-	bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
+	#bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
 
-	sub = rospy.Subscriber("/map", OccupancyGrid, mapCallBack)
-	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
 	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
 	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
 	dispathpub = rospy.Publisher("/BS_topic", Path, queue_size=1)
@@ -452,6 +441,9 @@ if __name__ == '__main__':
 	path_pub = rospy.Publisher('/lab4/path', GridCells, queue_size=1)
 	waypoints_pub = rospy.Publisher('/lab4/waypoints', Path, queue_size=1)
 	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
+	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
+
+	rospy.sleep(1)
 
 	print "Waiting for map"
 	while world_map == None and not rospy.is_shutdown():
@@ -462,12 +454,15 @@ if __name__ == '__main__':
 	
 	while not rospy.is_shutdown():
 		path = Path()
+		#print mapData
+		publishCells(world_data)
 		flag_cache = neworldMap_flag
 		neworldMap_flag = 0
 		if flag_cache > 0:
 			flag_cache = 0
 		# Initialization
 		
+
 		if world_map != None:
 			map_cache = world_map
 			world_map = None
@@ -480,7 +475,6 @@ if __name__ == '__main__':
 		#quat_tmp = [q_tmp.x, q_tmp.y, q_tmp.z, q_tmp.w]
 		#r_t, p_t, y_t = euler_from_quaternion(quat_tmp)
 		#start_cache.append(y_t)
-
 		print "Waiting for new start and goal position"
 		while goal_pose == None or start_pose == None and not rospy.is_shutdown():
 			if neworldMap_flag > 0:

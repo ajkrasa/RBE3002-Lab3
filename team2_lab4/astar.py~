@@ -39,6 +39,14 @@ class Node:
 				#if a gridcell is occupied no child is made in that gridcell
 				if (self.grid.data[i*width+j] == 100):
 					pass
+				elif (self.grid.data[(i+1)*width+j] == 100):
+					pass
+				elif (self.grid.data[i*width+(j+1)] == 100):
+					pass
+				elif (self.grid.data[(i-1)*width+j] == 100):
+					pass
+				elif (self.grid.data[i*width+(j-1)] == 100):
+					pass
 				elif(x+1 == i and y == j):
 					child1 = Node(v+1, (x+1, y), s, g, m)
 					self.children.append(child1)
@@ -53,6 +61,7 @@ class Node:
 					self.children.append(child4)
 				else:
 					pass
+		#print len(self.children)
 						
 
 	def Manhattan(self, point, point2):
@@ -61,7 +70,7 @@ class Node:
 	def Greedy(self):
 		x_side = abs(int(self.goal[0] - self.coor[0]))
 		y_side = abs(int(self.goal[1] - self.coor[1]))
-		hn = math.sqrt((x_side * x_side) + (y_side * y_side))
+		hn = math.sqrt(pow(x_side, 2) + pow(y_side, 2))
 		return hn
 
 	def CalF(self):
@@ -94,10 +103,27 @@ def Solve(start, goal, node):
 	shortest = 0
 	current = node
 	child = None
+	closedset = []
 	#while(current.coor[0] != goal[0] and current.coor[1] != goal[1]):
 	while(current.coor != goal):
+		#print closedset
 		current.Children()
-		for i in current.children:
+		#if(len(closedset) != 0):
+		#	for i in current.children:	
+		#		for l in closedset:
+		#			#print i.coor
+		#			#rospy.sleep(1)
+		#			if(i.coor == l):
+		#				pass
+		#			else:
+		#				if(shortest == 0):
+		#					child = i
+		#					shortest = i.CalF()
+		#				elif(i.CalF() < shortest):
+		#					child = i
+		#					shortest = i.CalF()
+		#else:
+		for i in current.children:	
 			if(shortest == 0):
 				child = i
 				shortest = i.CalF()
@@ -107,7 +133,9 @@ def Solve(start, goal, node):
 		if(child != None):
 			child.parent.append(current)
 			node.path.append(current.coor)
+			closedset.append(current.coor)
 			current = child
+			child = 0
 			#rospy.sleep(1)
 			#print start, current.coor, goal
 			#print current.coor == goal
@@ -118,12 +146,13 @@ def Solve(start, goal, node):
 
 
 def aStar(start, goal, grid):
+	
 	init = (start[0], start[1])
 	end = (goal[0], goal[1])
 
 	
 	origin = Node(0, init, init, end, grid)
 	solution = Solve(init, end, origin)
-	print solution
+	#print solution
 	return solution
 	
