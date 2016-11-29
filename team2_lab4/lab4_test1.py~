@@ -522,7 +522,7 @@ if __name__ == '__main__':
 
 		# Running A*
 		print start_cc, goal_cc
-		generated_path = aStar(start_cc, goal_cc, map_cache)
+		generated_path = aStar(start_cc, goal_cc, world_map)
 		print "Finished running A* algorithm"
 
 		if generated_path != None and not rospy.is_shutdown():
