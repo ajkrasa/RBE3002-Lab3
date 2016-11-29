@@ -217,7 +217,6 @@ def publishCells(grid):
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
-	print "inside publishCells"
 	for i in range(0,height): #height should be set to height of grid
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
