@@ -1,0 +1,3 @@
+The A* implementation off of http://www.redblobgames.com/pathfinding/a-star/implementation.html#sec-1-4
+
+This website gave a detailed example on how an A* funnction would work, when implementing a Queue/PriorityQueue.
