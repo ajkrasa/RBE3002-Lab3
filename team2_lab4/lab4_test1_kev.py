@@ -74,8 +74,7 @@ def readStart(startPos):
 	start_pose = tmp_pose
 
 
-
-
+	
 
 	
 
@@ -180,7 +179,8 @@ def genWaypoints(g_path_rev, worldMap):
 
 def rvizPath(cell_list, worldMap):
 	global path_pub
-
+	
+	rospy.sleep(1)
 	path_GC = GridCells()
 	path_GC.cell_width = worldMap.info.resolution
 	path_GC.cell_height = worldMap.info.resolution
@@ -218,9 +218,16 @@ def publishCells(grid):
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
+	
 	for i in range(0,height): #height should be set to height of grid
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
+			
+			case1 = (i+1)*width+j
+			case2 = (i)*width+(j+1)
+			case3 = (i-1)*width+j
+			case4 = (i)*width+(j-1)
+
 			if (grid[i*width+j] == 100):
 				point=Point()
 				point.x=(j*resolution)+offsetX + (.5 * resolution)
@@ -229,37 +236,41 @@ def publishCells(grid):
 				wall.append((j,i))
 				cells.cells.append(point)
 
-			elif (grid[(i+1)*width+j] == 100):
-				point=Point()
-				point.x=(j*resolution) + offsetX + (.5 * resolution)
-				point.y=(i*resolution) + offsetY + (.5 * resolution)
-				point.z=0
-				wall.append((j,i))
-				cells.cells.append(point)
+			elif (0 <= case1 and case1 <= (height * width - 1)):
+				if(grid[(i+1)*width+j] == 100):
+					point=Point()
+					point.x=(j*resolution) + offsetX + (.5 * resolution)
+					point.y=(i*resolution) + offsetY + (.5 * resolution)
+					point.z=0
+					wall.append((j,i))
+					cells.cells.append(point)
 
-			elif (grid[i*width+(j+1)] == 100):
-				point=Point()
-				point.x=(j*resolution) + offsetX + (.5 * resolution)
-				point.y=(i*resolution) + offsetY + (.5 * resolution)
-				point.z=0
-				wall.append((j,i))
-				cells.cells.append(point)
+			elif (0 <= case2 and case2 <= (height * width - 1) and case2 == 100):
+				if(grid[(i)*width+(j+1)] == 100):
+					point=Point()
+					point.x=(j*resolution) + offsetX + (.5 * resolution)
+					point.y=(i*resolution) + offsetY + (.5 * resolution)
+					point.z=0
+					wall.append((j,i))
+					cells.cells.append(point)
 
-			elif (grid[(i-1)*width+j] == 100):
-				point=Point()
-				point.x=(j*resolution) + offsetX + (.5 * resolution)
-				point.y=(i*resolution) + offsetY + (.5 * resolution)
-				point.z=0
-				wall.append((j,i))
-				cells.cells.append(point)
+			elif (0 <= case3 and case3 <= (height * width - 1) and case3 == 100):
+				if(grid[(i-1)*width+j] == 100):
+					point=Point()
+					point.x=(j*resolution) + offsetX + (.5 * resolution)
+					point.y=(i*resolution) + offsetY + (.5 * resolution)
+					point.z=0
+					wall.append((j,i))
+					cells.cells.append(point)
 
-			elif (grid[i*width+(j-1)] == 100):
-				point=Point()
-				point.x=(j*resolution) + offsetX + (.5 * resolution)
-				point.y=(i*resolution) + offsetY + (.5 * resolution)
-				point.z=0
-				wall.append((j,i))
-				cells.cells.append(point)
+			elif (0 <= case4 and case4 <= (height * width - 1) and case4 == 100):
+				if(grid[(i)*width+(j-1)] == 100):
+					point=Point()
+					point.x=(j*resolution) + offsetX + (.5 * resolution)
+					point.y=(i*resolution) + offsetY + (.5 * resolution)
+					point.z=0
+					wall.append((j,i))
+					cells.cells.append(point)
 	pub.publish(cells)
 
 '''----------------------------------------Navigation Functions-----------------------------------------'''
@@ -326,10 +337,12 @@ def navToPose(goal):
 	print "distance: ", distance
 	print "dtheta1: ", dtheta1
 	'''
-
-	rotate(dtheta0)
-	driveStraight(0.1, distance)
-	rotate(dtheta1)
+	if(dtheta0 != 0):
+		rotate(dtheta0)
+	if(distance != 0):
+		driveStraight(0.1, distance)
+	if(dtheta1 != 0):
+		rotate(dtheta1)
 
 def rotate(angle):
 	global odom_list
@@ -446,13 +459,13 @@ if __name__ == '__main__':
 	odom_sub = rospy.Subscriber('/odom', Odometry, readOdom)
 	# cost_map_sub = rospy.Subscriber('/move_base/global_costmap/costmap', OccupancyGrid, costMapCallback)
 
-	goal_sub = rospy.Subscriber('move_base_simple/goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
-	navgoal_sub = rospy.Subscriber('move_base_simple/2goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
-	goal_sub = rospy.Subscriber('initialpose', PoseWithCovarianceStamped, readStart, queue_size=1) #change topic for best results
-
+	goal_sub = rospy.Subscriber('/move_base_simple/goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
+	navgoal_sub = rospy.Subscriber('/move_base_simple/2goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
+	goal_sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart, queue_size=1) #change topic for best results
+	cost_pub = rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, costMapCallback)
 	#bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
 
-	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
+	
 	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
 	dispathpub = rospy.Publisher("/BS_topic", Path, queue_size=1)
 	# Publishers
@@ -466,6 +479,7 @@ if __name__ == '__main__':
 	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
 	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
 	pub_frontier = rospy.Publisher('map_frontier', GridCells, queue_size=1)
+	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
 
 	rospy.sleep(1)
 
@@ -529,11 +543,13 @@ if __name__ == '__main__':
 
 		# Running A*
 		print start_cc, goal_cc
+		rospy.sleep(1)
 		generated_path, cost = aStar(start_cc, goal_cc, map_cache, wall)
 		print "Finished running A* algorithm"
 
 		if generated_path != None and not rospy.is_shutdown():
 			print "Updated RViz with path"
+			
 			rvizPath(generated_path, map_cache)
 			path = genWaypoints(generated_path, map_cache)
 			waypoints_pub.publish(path)
@@ -557,16 +573,16 @@ if __name__ == '__main__':
 				# Replanning
 				navToPose(waypoint)
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
-				if world_map != None:
-					map_cache = world_map
-					generated_path, cost = aStar(curr_cc, goal_cc, map_cache, wall)
+			if world_map != None:
+				map_cache = world_map
+				generated_path, cost = aStar(curr_cc, goal_cc, map_cache, wall)
 
-					print "Updated RViz with path"
-					rvizPath(generated_path, map_cache)
-					path = genWaypoints(generated_path, map_cache)
-					waypoints_pub.publish(path)
-					print "Published generated path to topic: [/lab4/waypoints]"
-					break
+				print "Updated RViz with path"
+				rvizPath(generated_path, map_cache)
+				path = genWaypoints(generated_path, map_cache)
+				waypoints_pub.publish(path)
+				print "Published generated path to topic: [/lab4/waypoints]"
+				break
 			if (curr_cc[0] == goal_cc[0] and curr_cc[1] == goal_cc[1]):
 				at_goal = True
 		
