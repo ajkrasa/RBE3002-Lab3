@@ -87,11 +87,12 @@ def worldToGrid(worldPoint, worldMap):
 	gridPoint = Point()
 	gridPoint.x = int((worldPoint.x - worldMap.info.origin.position.x)/res) 
 	gridPoint.y = int((worldPoint.y - worldMap.info.origin.position.y)/res)
+	gridPoint.z = 0
 	return gridPoint
 
 # (grid) -> (real world)
 def gridToWorld(gridPoint, worldMap):
-	print gridPoint[1]
+	print gridPoint
 	gridx = float(gridPoint[0])
 	if(gridPoint[1] > 0):
 		gridy = float(gridPoint[1])
@@ -102,11 +103,21 @@ def gridToWorld(gridPoint, worldMap):
 	worldPoint = Point()
 	worldPoint.x = ((gridx*res) + worldMap.info.origin.position.x) + (0.5*res)
 	worldPoint.y = ((gridy*res) + worldMap.info.origin.position.y) + (0.5*res)
+	worldPoint.z = 0
 	return worldPoint
 
 # Generate Waypoints
 def genWaypoints(g_path_rev, worldMap):
-	
+	#path = Path()
+	#path.header.frame_id = 'waypoints'
+	#poseStamped = PoseStamped()
+	#poseStamped.header.frame_id = 'waypoints'
+	#pose = Pose()
+	cells = GridCells()
+	cells.header.frame_id = 'waypoints'
+	cells.cell_width = resolution 
+	cells.cell_height = resolution
+
 	gridPoints = []
 	w_ori = []
 	g_path = list(reversed(g_path_rev))
@@ -146,21 +157,18 @@ def genWaypoints(g_path_rev, worldMap):
 			gridPoints.append(g_path[-1])
 
 			q_t = quaternion_from_euler(0, 0, 0)
-			quat_heading = Quaternion(*q_t)
 
 			w_ori.append(quat_heading)
 		elif tmp_ctr == 3:
 			tmp_ctr = 0
-			gridPoints.append(point)
+			gridPoints.append((i, point))
 			#print prev_pt
 			dx = i - prev_pt[0]
 			dy = point - prev_pt[1]
 			heading = (dx, dy)
 			th_heading = math.atan2(heading[1], heading[0])
 			q_t = quaternion_from_euler(0, 0, th_heading)
-			quat_heading = Quaternion(*q_t)
-
-			w_ori.append(quat_heading)
+			
 			prev_pt = (i, point)
 		else:
 			tmp_ctr += 1
@@ -168,19 +176,22 @@ def genWaypoints(g_path_rev, worldMap):
 	# Convert grid points to world coordinates
 	worldPoints = []
 	for point in gridPoints:
-		worldPoints.append(gridToWorld((i, point), worldMap))
+		point=Point()
+		point = gridToWorld(point, worldMap) 
+		cells.cells.append(point)
+		#pose.position = gridToWorld(point, worldMap)
+		#pose.orientation = q_t
+		#poseStamped.pose = pose
+		#path.poses.append(poseStamped)
 	# Create actual Path()
-	path = Path()
-	for i in range(len(worldPoints)):
-		path.poses.append(PoseStamped(Header(), Pose(worldPoints[i], w_ori[i])))
-	return path
+	#print path
+	return cells
 
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
 
 def rvizPath(cell_list, worldMap):
 	global path_pub
-	
-	rospy.sleep(1)
+	rospy.sleep(0)	
 	path_GC = GridCells()
 	path_GC.cell_width = worldMap.info.resolution
 	path_GC.cell_height = worldMap.info.resolution
@@ -552,7 +563,7 @@ if __name__ == '__main__':
 			
 			rvizPath(generated_path, map_cache)
 			path = genWaypoints(generated_path, map_cache)
-			waypoints_pub.publish(path)
+			pubway.publish(path)
 
 			print "Published generated path to topic: [/lab4/waypoints]"
 		
@@ -580,7 +591,8 @@ if __name__ == '__main__':
 				print "Updated RViz with path"
 				rvizPath(generated_path, map_cache)
 				path = genWaypoints(generated_path, map_cache)
-				waypoints_pub.publish(path)
+				#print path
+				pubway.publish(path)
 				print "Published generated path to topic: [/lab4/waypoints]"
 				break
 			if (curr_cc[0] == goal_cc[0] and curr_cc[1] == goal_cc[1]):
