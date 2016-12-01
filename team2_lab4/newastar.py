@@ -30,16 +30,18 @@ class Node:
 		#	self.path.append(start)
 
 	def in_bounds(self, tup):
-		(x, y) = tup
+		(x, y, z) = tup
 		return 0 <= x < self.width and 0 <= y < self.height
 	
 	def passable(self, tup):
-		return tup not in self.wall
+		(x, y, z) = tup
+		tup2 = (x, y)
+		return tup2 not in self.wall
 
 	def neighbors(self, tup):
-		(x, y) = tup
+		(x, y, z) = tup
 
-		results = [(x+1, y), (x, y-1), (x-1, y), (x, y+1)]
+		results = [(x+1, y, 0), (x, y-1, 90), (x-1, y, 180), (x, y+1, 270)]
 		results = filter(self.in_bounds, results)
 		results = filter(self.passable, results)
 		return results
@@ -91,7 +93,7 @@ def Solve(node, start, goal):
 	while not frontier.empty():
 		current = frontier.pop()
 		
-		if(current == goal):
+		if(current[0] == goal[0] and current[1] == goal[1]):
 			break
 
 		for i in node.neighbors(current):
@@ -116,13 +118,13 @@ def reconstruct_path(came_from, start, goal):
 	return path
 
 def aStar(start, goal, grid, wall):
-	init = (start[0], start[1])
-	end = (goal[0], goal[1])
+	init = (start[0], start[1], start[2])
+	end = (goal[0], goal[1], goal[2])
 	
 	origin = Node(init, init, end, grid, wall)
 	fron, cost = Solve(origin, init, end)
 	solution = reconstruct_path(fron, init, end)
-	#print solution
+	print solution
 	#print cost
 	return solution, cost
 	 
