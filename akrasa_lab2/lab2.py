@@ -125,13 +125,14 @@ def driveStraight(speed, distance):
         print currx
         print curry
 
-        currDistance = math.sqrt(math.pow((currx - initx), 2) + math.pow((curry - inity), 2))
+        currDistance = math.sqrt((currx - initx)**2 + (curry - inity)**2)
         print currDistance
         if (currDistance >= distance):
             thereYet = True
             publishTwist(0, 0)
         else:
             publishTwist(speed, 0)
+            #rospy.sleep(0.05)
             print "Still going"
 
 
