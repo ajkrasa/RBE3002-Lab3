@@ -412,16 +412,16 @@ def driveStraight(speed, distance):
 def readOdom(event):
 	global pose
 
-	 odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(1.0))    
-    (position, orientation) = odom_list.lookupTransform('map','base_footprint', rospy.Time(0)) #finds the position and oriention of two objects relative to each other 
-    pose.position.x = position[0]
-    pose.position.y = position[1]
+	odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(1.0))	 
+	(position, orientation) = odom_list.lookupTransform('map','base_footprint', rospy.Time(0)) #finds the position and oriention of two objects relative to each other 
+	pose.position.x = position[0]
+	pose.position.y = position[1]
 
-    odomW = orientation
-    q = [odomW[0], odomW[1], odomW[2], odomW[3]]
-    roll, pitch, yaw = euler_from_quaternion(q)
-    #Convert yaw to degrees
-    pose.orientation.z = yaw
+	odomW = orientation
+	q = [odomW[0], odomW[1], odomW[2], odomW[3]]
+	roll, pitch, yaw = euler_from_quaternion(q)
+	#Convert yaw to degrees
+	pose.orientation.z = yaw
 
 '''-------------------------------------------Main Function---------------------------------------------'''
 
@@ -531,7 +531,7 @@ if __name__ == '__main__':
 		if neworldMap_flag > 0 or rospy.is_shutdown():
 			continue
 		goal_cache = goal_pose
-		start_cache = (pose.position.x, pose.position.y)
+		start_cache = (pose.position.x, pose.position.y, pose.orientation.z)
 		goal_pose = None
 		start_pose = None
 		print "Received start position at: [%f, %f]" % (start_cache[0], start_cache[1])
