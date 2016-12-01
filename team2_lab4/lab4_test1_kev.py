@@ -87,11 +87,12 @@ def worldToGrid(worldPoint, worldMap):
 	gridPoint = Point()
 	gridPoint.x = int((worldPoint.x - worldMap.info.origin.position.x)/res) 
 	gridPoint.y = int((worldPoint.y - worldMap.info.origin.position.y)/res)
+	gridPoint.z = 0
 	return gridPoint
 
 # (grid) -> (real world)
 def gridToWorld(gridPoint, worldMap):
-	print gridPoint[1]
+	print gridPoint
 	gridx = float(gridPoint[0])
 	if(gridPoint[1] > 0):
 		gridy = float(gridPoint[1])
@@ -102,11 +103,21 @@ def gridToWorld(gridPoint, worldMap):
 	worldPoint = Point()
 	worldPoint.x = ((gridx*res) + worldMap.info.origin.position.x) + (0.5*res)
 	worldPoint.y = ((gridy*res) + worldMap.info.origin.position.y) + (0.5*res)
+	worldPoint.z = 0
 	return worldPoint
 
 # Generate Waypoints
 def genWaypoints(g_path_rev, worldMap):
-	
+	#path = Path()
+	#path.header.frame_id = 'waypoints'
+	#poseStamped = PoseStamped()
+	#poseStamped.header.frame_id = 'waypoints'
+	#pose = Pose()
+	cells = GridCells()
+	cells.header.frame_id = 'waypoints'
+	cells.cell_width = resolution 
+	cells.cell_height = resolution
+
 	gridPoints = []
 	w_ori = []
 	g_path = list(reversed(g_path_rev))
@@ -146,21 +157,18 @@ def genWaypoints(g_path_rev, worldMap):
 			gridPoints.append(g_path[-1])
 
 			q_t = quaternion_from_euler(0, 0, 0)
-			quat_heading = Quaternion(*q_t)
 
 			w_ori.append(quat_heading)
 		elif tmp_ctr == 3:
 			tmp_ctr = 0
-			gridPoints.append(point)
+			gridPoints.append((i, point))
 			#print prev_pt
 			dx = i - prev_pt[0]
 			dy = point - prev_pt[1]
 			heading = (dx, dy)
 			th_heading = math.atan2(heading[1], heading[0])
 			q_t = quaternion_from_euler(0, 0, th_heading)
-			quat_heading = Quaternion(*q_t)
-
-			w_ori.append(quat_heading)
+			
 			prev_pt = (i, point)
 		else:
 			tmp_ctr += 1
@@ -168,19 +176,21 @@ def genWaypoints(g_path_rev, worldMap):
 	# Convert grid points to world coordinates
 	worldPoints = []
 	for point in gridPoints:
-		worldPoints.append(gridToWorld((i, point), worldMap))
+		point=Point()
+		point = gridToWorld(point, worldMap) 
+		cells.cells.append(point)
+		#pose.position = gridToWorld(point, worldMap)
+		#pose.orientation = q_t
+		#poseStamped.pose = pose
+		#path.poses.append(poseStamped)
 	# Create actual Path()
-	path = Path()
-	for i in range(len(worldPoints)):
-		path.poses.append(PoseStamped(Header(), Pose(worldPoints[i], w_ori[i])))
-	return path
+	#print path
+	return cells
 
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
 
 def rvizPath(cell_list, worldMap):
-	global path_pub
-	
-	rospy.sleep(1)
+	global path_pub	
 	path_GC = GridCells()
 	path_GC.cell_width = worldMap.info.resolution
 	path_GC.cell_height = worldMap.info.resolution
@@ -305,12 +315,12 @@ def publishTwist(lin_vel, ang_vel):
 def navToPose(goal):
 	global pose
 
-	x0 = pose.pose.position.x		#Set origin
-	y0 = pose.pose.position.y
-	q0 = (pose.pose.orientation.x,
-			pose.pose.orientation.y,
-			pose.pose.orientation.z,
-			pose.pose.orientation.w)
+	x0 = pose.position.x		#Set origin
+	y0 = pose.position.y
+	q0 = (pose.orientation.x,
+			pose.orientation.y,
+			pose.orientation.z,
+			pose.orientation.w)
 	x2 = goal.pose.position.x
 	y2 = goal.pose.position.y
 	q2 = (goal.pose.orientation.x,
@@ -337,12 +347,9 @@ def navToPose(goal):
 	print "distance: ", distance
 	print "dtheta1: ", dtheta1
 	'''
-	if(dtheta0 != 0):
-		rotate(dtheta0)
-	if(distance != 0):
-		driveStraight(0.1, distance)
-	if(dtheta1 != 0):
-		rotate(dtheta1)
+	rotate(dtheta0)
+	driveStraight(0.1, distance)
+	rotate(dtheta1)
 
 def rotate(angle):
 	global odom_list
@@ -387,13 +394,13 @@ def rotate(angle):
 def driveStraight(speed, distance):
 	global pose
 
-	x0 = pose.pose.position.x   #Set origin
-	y0 = pose.pose.position.y
+	x0 = pose.position.x   #Set origin
+	y0 = pose.position.y
 
 	done = False
 	while (not done and not rospy.is_shutdown()):
-		x1 = pose.pose.position.x
-		y1 = pose.pose.position.y
+		x1 = pose.position.x
+		y1 = pose.position.y
 		d = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)	  #Distance formula
 		if (d >= distance):
 			publishTwist(0, 0)
@@ -402,16 +409,19 @@ def driveStraight(speed, distance):
 			publishTwist(speed, 0)
 
 # Odometry Callback function.
-def readOdom(msg):
+def readOdom(event):
 	global pose
-	global odom_tf
 
-	pose = msg.pose
-	geo_quat = pose.pose.orientation
-	odom_tf.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-						(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
-						rospy.Time.now(),
-						"base_footprint","odom")
+	odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(1.0))	 
+	(position, orientation) = odom_list.lookupTransform('map','base_footprint', rospy.Time(0)) #finds the position and oriention of two objects relative to each other 
+	pose.position.x = position[0]
+	pose.position.y = position[1]
+
+	odomW = orientation
+	q = [odomW[0], odomW[1], odomW[2], odomW[3]]
+	roll, pitch, yaw = euler_from_quaternion(q)
+	#Convert yaw to degrees
+	pose.orientation.z = yaw
 
 '''-------------------------------------------Main Function---------------------------------------------'''
 
@@ -438,7 +448,7 @@ if __name__ == '__main__':
 
 	# Initialize Global Variables
 	wall = []
-	pose = PoseStamped()
+	pose = Pose()
 	neworldMap_flag = 0
 	world_map = None
 	start_pose = None
@@ -482,6 +492,8 @@ if __name__ == '__main__':
 	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
 
 	rospy.sleep(1)
+	
+	rospy.Timer(rospy.Duration(.01), readOdom)
 
 	print "Waiting for map"
 	while world_map == None and not rospy.is_shutdown():
@@ -512,14 +524,14 @@ if __name__ == '__main__':
 		#quat_tmp = [q_tmp.x, q_tmp.y, q_tmp.z, q_tmp.w]
 		#r_t, p_t, y_t = euler_from_quaternion(quat_tmp)
 		#start_cache.append(y_t)
-		print "Waiting for new start and goal position"
-		while goal_pose == None or start_pose == None and not rospy.is_shutdown():
+		print "Waiting for new goal position"
+		while goal_pose == None and not rospy.is_shutdown():
 			if neworldMap_flag > 0:
 				break
 		if neworldMap_flag > 0 or rospy.is_shutdown():
 			continue
 		goal_cache = goal_pose
-		start_cache = start_pose
+		start_cache = (pose.position.x, pose.position.y, pose.orientation.z)
 		goal_pose = None
 		start_pose = None
 		print "Received start position at: [%f, %f]" % (start_cache[0], start_cache[1])
@@ -552,7 +564,7 @@ if __name__ == '__main__':
 			
 			rvizPath(generated_path, map_cache)
 			path = genWaypoints(generated_path, map_cache)
-			waypoints_pub.publish(path)
+			pubway.publish(path)
 
 			print "Published generated path to topic: [/lab4/waypoints]"
 		
@@ -580,7 +592,8 @@ if __name__ == '__main__':
 				print "Updated RViz with path"
 				rvizPath(generated_path, map_cache)
 				path = genWaypoints(generated_path, map_cache)
-				waypoints_pub.publish(path)
+				#print path
+				pubway.publish(path)
 				print "Published generated path to topic: [/lab4/waypoints]"
 				break
 			if (curr_cc[0] == goal_cc[0] and curr_cc[1] == goal_cc[1]):
