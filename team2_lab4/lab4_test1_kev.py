@@ -190,8 +190,7 @@ def genWaypoints(g_path_rev, worldMap):
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
 
 def rvizPath(cell_list, worldMap):
-	global path_pub
-	rospy.sleep(0)	
+	global path_pub	
 	path_GC = GridCells()
 	path_GC.cell_width = worldMap.info.resolution
 	path_GC.cell_height = worldMap.info.resolution
@@ -316,12 +315,12 @@ def publishTwist(lin_vel, ang_vel):
 def navToPose(goal):
 	global pose
 
-	x0 = pose.pose.position.x		#Set origin
-	y0 = pose.pose.position.y
-	q0 = (pose.pose.orientation.x,
-			pose.pose.orientation.y,
-			pose.pose.orientation.z,
-			pose.pose.orientation.w)
+	x0 = pose.position.x		#Set origin
+	y0 = pose.position.y
+	q0 = (pose.orientation.x,
+			pose.orientation.y,
+			pose.orientation.z,
+			pose.orientation.w)
 	x2 = goal.pose.position.x
 	y2 = goal.pose.position.y
 	q2 = (goal.pose.orientation.x,
@@ -348,12 +347,9 @@ def navToPose(goal):
 	print "distance: ", distance
 	print "dtheta1: ", dtheta1
 	'''
-	if(dtheta0 != 0):
-		rotate(dtheta0)
-	if(distance != 0):
-		driveStraight(0.1, distance)
-	if(dtheta1 != 0):
-		rotate(dtheta1)
+	rotate(dtheta0)
+	driveStraight(0.1, distance)
+	rotate(dtheta1)
 
 def rotate(angle):
 	global odom_list
@@ -398,13 +394,13 @@ def rotate(angle):
 def driveStraight(speed, distance):
 	global pose
 
-	x0 = pose.pose.position.x   #Set origin
-	y0 = pose.pose.position.y
+	x0 = pose.position.x   #Set origin
+	y0 = pose.position.y
 
 	done = False
 	while (not done and not rospy.is_shutdown()):
-		x1 = pose.pose.position.x
-		y1 = pose.pose.position.y
+		x1 = pose.position.x
+		y1 = pose.position.y
 		d = math.sqrt((x1 - x0)**2 + (y1 - y0)**2)	  #Distance formula
 		if (d >= distance):
 			publishTwist(0, 0)
@@ -413,16 +409,19 @@ def driveStraight(speed, distance):
 			publishTwist(speed, 0)
 
 # Odometry Callback function.
-def readOdom(msg):
+def readOdom(event):
 	global pose
-	global odom_tf
 
-	pose = msg.pose
-	geo_quat = pose.pose.orientation
-	odom_tf.sendTransform((pose.pose.position.x, pose.pose.position.y, 0),
-						(pose.pose.orientation.x, pose.pose.orientation.y, pose.pose.orientation.z, pose.pose.orientation.w),
-						rospy.Time.now(),
-						"base_footprint","odom")
+	 odom_list.waitForTransform('map', 'base_footprint', rospy.Time(0), rospy.Duration(1.0))    
+    (position, orientation) = odom_list.lookupTransform('map','base_footprint', rospy.Time(0)) #finds the position and oriention of two objects relative to each other 
+    pose.position.x = position[0]
+    pose.position.y = position[1]
+
+    odomW = orientation
+    q = [odomW[0], odomW[1], odomW[2], odomW[3]]
+    roll, pitch, yaw = euler_from_quaternion(q)
+    #Convert yaw to degrees
+    pose.orientation.z = yaw
 
 '''-------------------------------------------Main Function---------------------------------------------'''
 
@@ -449,7 +448,7 @@ if __name__ == '__main__':
 
 	# Initialize Global Variables
 	wall = []
-	pose = PoseStamped()
+	pose = Pose()
 	neworldMap_flag = 0
 	world_map = None
 	start_pose = None
@@ -493,6 +492,8 @@ if __name__ == '__main__':
 	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
 
 	rospy.sleep(1)
+	
+	rospy.Timer(rospy.Duration(.01), readOdom)
 
 	print "Waiting for map"
 	while world_map == None and not rospy.is_shutdown():
@@ -523,14 +524,14 @@ if __name__ == '__main__':
 		#quat_tmp = [q_tmp.x, q_tmp.y, q_tmp.z, q_tmp.w]
 		#r_t, p_t, y_t = euler_from_quaternion(quat_tmp)
 		#start_cache.append(y_t)
-		print "Waiting for new start and goal position"
-		while goal_pose == None or start_pose == None and not rospy.is_shutdown():
+		print "Waiting for new goal position"
+		while goal_pose == None and not rospy.is_shutdown():
 			if neworldMap_flag > 0:
 				break
 		if neworldMap_flag > 0 or rospy.is_shutdown():
 			continue
 		goal_cache = goal_pose
-		start_cache = start_pose
+		start_cache = (pose.position.x, pose.position.y)
 		goal_pose = None
 		start_pose = None
 		print "Received start position at: [%f, %f]" % (start_cache[0], start_cache[1])
