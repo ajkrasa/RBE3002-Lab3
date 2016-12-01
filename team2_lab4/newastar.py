@@ -93,10 +93,11 @@ def Solve(node, start, goal):
 	while not frontier.empty():
 		current = frontier.pop()
 		
-		if(current[0] == goal[0] and current[1] == goal[1]):
+		if(current == goal):
 			break
 
 		for i in node.neighbors(current):
+			
 			new_cost = cost_so_far[current] + 1
 			if i not in cost_so_far or new_cost < cost_so_far[i]:
 				cost_so_far[i] = new_cost
@@ -107,13 +108,15 @@ def Solve(node, start, goal):
 	return came_from, cost_so_far
 
 def reconstruct_path(came_from, start, goal):
-	print came_from
+	#print came_from
 	current = goal
 	path = [current]
 	while (current != start):
+		#print current 
+		#rospy.sleep(1)
 		current = came_from[current]
 		path.append(current)
-	path.append(start)
+	#path.append(start)
 	path.reverse()
 	return path
 
@@ -125,6 +128,7 @@ def aStar(start, goal, grid, wall):
 	fron, cost = Solve(origin, init, end)
 	solution = reconstruct_path(fron, init, end)
 	print solution
+	#rospy.sleep(1)
 	#print cost
 	return solution, cost
 	 
