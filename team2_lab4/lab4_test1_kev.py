@@ -174,7 +174,6 @@ def genWaypoints(g_path_rev, worldMap):
 			dy = point - prev_pt[1]
 			heading = (dx, dy)
 			q_t = quaternion_from_euler(0, 0, deg)
-			
 			prev_pt = (i, point, deg)
 		else:
 			#print gridPoints
@@ -331,7 +330,7 @@ def publishTwist(lin_vel, ang_vel):
 def navToPose(goal):
 	global pose
 	print goal
-	rospy.sleep(1)
+	#rospy.sleep(1)
 	
 
 	x0 = pose.position.x		#Set origin
@@ -346,24 +345,27 @@ def navToPose(goal):
 			goal.pose.orientation.y,
 			goal.pose.orientation.z,
 			goal.pose.orientation.w)
-	theta_tup_0 = euler_from_quaternion(q0)
-	theta0 = theta_tup_0[2]
-	theta_tup_2 = euler_from_quaternion(q2)
-	theta2 = theta_tup_2[2]
+	theta0 = q0[2]
+	theta2 = q2[2]
 
 	dx = x2 - x0
 	dy = y2 - y0
-	theta1 = math.atan2(dy, dx)
+	#theta1 = math.atan2(dy, dx)
 
-	dtheta0 = theta1 - theta0
-	dtheta1 = theta2 - theta1
+	#dtheta0 = theta1 - theta0
+	#dtheta1 = theta2 - theta1
+	#dtheta0 = theta2 - theta0
 	distance = math.sqrt(dx**2 + dy**2)
 	
-	
-	
-	rotate(dtheta0)
+	#print "dtheta0: %d" % dtheta0
+	#print "dtheta1: %d" % dtheta1
+	#print "theta0: %d" % theta0
+	#print "theta1: %d" % theta1
+	#print "theta2: %d" % theta2
+
+	rotate(theta2)
 	driveStraight(0.1, distance)
-	rotate(dtheta1)
+	#rotate(dtheta1)
 
 def rotate(angle):
 	global odom_list
@@ -374,60 +376,24 @@ def rotate(angle):
 	if(angle > 180 or angle < -180):
 		print "angle is too large or small"
 	
-	angvel = Twist()
-	done = False
+	#set rotation direction 
+	error = angle - math.degrees(pose.orientation.z)
 
 	if(angle < 0):
 		publishTwist(0,-.5)
 	else:
-		publishTwist(0, .5)
+		publishTwist(0, .5) 
 
+	while((abs(error) >= 2) and not rospy.is_shutdown()):
+		ang_vel = error/45
+		if(ang_vel < .1 and ang_vel > 0):
+			ang_vel = .1
+	   	if(ang_vel > -.1 and ang_vel < 0):
+			ang_vel = -.1
+		publishTwist(0, ang_vel)
+		error = angle - math.degrees(pose.orientation.z)
+	publishTwist(0, 0)
 
-	(trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
-
-	roll, pitch, yaw = euler_from_quaternion(rot)
-	
-	state = math.degrees(yaw)
-	print "state"	
-	print state
-
-	goal = state + angle 
-
-
-	while(not done and not rospy.is_shutdown()):
-		(trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
-		
-		roll, pitch, yaw = euler_from_quaternion(rot)
-		theta = math.degrees(yaw)
-		#print "theta"
-		#print theta
-
-		#print "goal"
-		#print goal
-
-		if(angle > 0):
-			if (goal <= theta):
-				publishTwist(0, 0)
-				done = True
-				print "I turned"
-			else:
-				if(angle < 0):
-					publishTwist(0,-.5)
-				else:
-					publishTwist(0, .5)
-
-		else:
-			if (goal >= theta):
-				publishTwist(0, 0)
-				done = True
-				print "I turned"
-			else:
-				if(angle < 0):
-					publishTwist(0,-.5)
-				else:
-					publishTwist(0, .5)
-	angvel.angular.z = 0.0
-	nav_pub.publish(angvel)
 
 #This function accepts a speed and a distance for the robot to move in a straight line
 def driveStraight(speed, distance):
@@ -525,7 +491,7 @@ if __name__ == '__main__':
 
 	path_pub = rospy.Publisher('/lab4/path', GridCells, queue_size=1)
 	waypoints_pub = rospy.Publisher('/lab4/waypoints', Path, queue_size=1)
-	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
+	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10)
 	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
 	pub_frontier = rospy.Publisher('map_frontier', GridCells, queue_size=1)
 	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
@@ -614,6 +580,7 @@ if __name__ == '__main__':
 			tmp_wp_ctr += 1
 
 		at_goal = False
+		driveStriaght(.1, .5) # drive straight to get bearing on map
 		while not at_goal and not rospy.is_shutdown():
 			tmp_wp_ctr = 0
 			curr_cc = []
@@ -622,6 +589,7 @@ if __name__ == '__main__':
 				tmp_wp_ctr += 1
 
 				# Replanning
+				
 				navToPose(waypoint)
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
 			if world_map != None:
