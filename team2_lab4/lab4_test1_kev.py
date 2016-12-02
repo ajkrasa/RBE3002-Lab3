@@ -329,7 +329,6 @@ def publishTwist(lin_vel, ang_vel):
 # Drive to a goal subscribed as /move_base_simple/goal
 def navToPose(goal):
 	global pose
-	print goal
 	#rospy.sleep(1)
 	
 
@@ -346,7 +345,7 @@ def navToPose(goal):
 			goal.pose.orientation.z,
 			goal.pose.orientation.w)
 	theta0 = q0[2]
-	theta2 = q2[2]
+	theta2 = math.degrees(q2[2])
 
 	dx = x2 - x0
 	dy = y2 - y0
@@ -361,7 +360,8 @@ def navToPose(goal):
 	#print "dtheta1: %d" % dtheta1
 	#print "theta0: %d" % theta0
 	#print "theta1: %d" % theta1
-	#print "theta2: %d" % theta2
+	print q2
+	print "theta2: %d" % theta2
 
 	rotate(theta2)
 	driveStraight(0.1, distance)
@@ -393,6 +393,7 @@ def rotate(angle):
 		publishTwist(0, ang_vel)
 		error = angle - math.degrees(pose.orientation.z)
 	publishTwist(0, 0)
+	rospy.sleep(.5)
 
 
 #This function accepts a speed and a distance for the robot to move in a straight line
@@ -412,6 +413,8 @@ def driveStraight(speed, distance):
 			done = True
 		else:
 			publishTwist(speed, 0)
+	publishTwist(0,0)
+	rospy.sleep(.5)
 
 # Odometry Callback function.
 def readOdom(event):
@@ -576,11 +579,11 @@ if __name__ == '__main__':
 		print "Waypoints:"
 		tmp_wp_ctr = 0
 		for waypoint in path.poses:
-			print tmp_wp_ctr, ": [", waypoint.pose.position.x, ", ", waypoint.pose.position.y, "]"
+			#print tmp_wp_ctr, ": [", waypoint.pose.position.x, ", ", waypoint.pose.position.y, "]"
 			tmp_wp_ctr += 1
 
 		at_goal = False
-		driveStriaght(.1, .5) # drive straight to get bearing on map
+		#driveStraight(.1, .05) # drive straight to get bearing on map
 		while not at_goal and not rospy.is_shutdown():
 			tmp_wp_ctr = 0
 			curr_cc = []
@@ -597,7 +600,7 @@ if __name__ == '__main__':
 				generated_path, cost = aStar(curr_cc, goal_cc, map_cache, wall)
 
 				print "Updated RViz with path"
-				if(world_map == map_cahce):
+				if(world_map == map_cache):
 					path = genWaypoints(generated_path, map_cache)
 					#print path
 					waypoints_pub.publish(path)
