@@ -41,26 +41,11 @@ class Node:
 	def neighbors(self, tup):
 		(x, y, z) = tup
 
-		results = [(x+1, y, 0), (x, y-1, 90), (x-1, y, 180), (x, y+1, 270)]
+		results = [(x+1, y, 0), (x, y-1, 270), (x-1, y, 180), (x, y+1, 90)]
 		results = filter(self.in_bounds, results)
 		results = filter(self.passable, results)
 		return results
 		
-		
-
-	#def Children(self):
-	#	v = self.value
-	#	s = self.start
-	#	g = self.goal
-	#	m = self.grid
-	#	w = self.wall
-	#	c = self.neighbors(self.coor)
-
-	#	for t in c:
-	#		child = Node(t, s, g, m, w)
-	#		self.children.append(child)
-	#		child.parent.append(self)
-
 		
 
 
@@ -105,7 +90,7 @@ def Solve(node, start, goal):
 				frontier.push(i, priority)
 				came_from[i] = current
 	
-	return came_from, cost_so_far
+	return came_from, came_from
 
 def reconstruct_path(came_from, start, goal):
 	#print came_from
@@ -125,10 +110,10 @@ def aStar(start, goal, grid, wall):
 	end = (goal[0], goal[1], goal[2])
 	
 	origin = Node(init, init, end, grid, wall)
-	fron, cost = Solve(origin, init, end)
+	fron, prev = Solve(origin, init, end)
 	solution = reconstruct_path(fron, init, end)
 	print solution
 	#rospy.sleep(1)
 	#print cost
-	return solution, cost
+	return solution, prev
 	 

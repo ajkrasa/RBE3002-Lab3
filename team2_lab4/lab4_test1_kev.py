@@ -73,9 +73,6 @@ def readStart(startPos):
 	tmp_pose.append(y2)
 	start_pose = tmp_pose
 
-
-	
-
 	
 
 
@@ -85,8 +82,8 @@ def readStart(startPos):
 def worldToGrid(worldPoint, worldMap):
 	res = worldMap.info.resolution
 	gridPoint = Point()
-	gridPoint.x = int((worldPoint.x - worldMap.info.origin.position.x)/res) 
-	gridPoint.y = int((worldPoint.y - worldMap.info.origin.position.y)/res)
+	gridPoint.x = int((worldPoint[0] - worldMap.info.origin.position.x)/res) 
+	gridPoint.y = int((worldPoint[1] - worldMap.info.origin.position.y)/res)
 	gridPoint.z = 0
 	return gridPoint
 
@@ -107,7 +104,7 @@ def gridToWorld(gridPoint, worldMap):
 	return worldPoint
 
 # Generate Waypoints
-def genWaypoints(g_path_rev, worldMap):
+def genWaypoints(g_path_rev, initial, worldMap):
 	global pubway
 	path = Path()
 	path.header.frame_id = 'map'
@@ -124,79 +121,55 @@ def genWaypoints(g_path_rev, worldMap):
 	g_path = list(reversed(g_path_rev))
 
 	# Waypoints based on change in direction
-	'''
-	prev_pt = g_path[0]
-	i_dx = g_path[1].x - g_path[0].x
-	i_dy = g_path[1].y - g_path[0].y
-	heading = (i_dx, i_dy)
-	g_path.pop(0)
-	for i, point in enumerate(g_path):
-		dx = point.x - prev_pt.x
-		dy = point.y - prev_pt.y
-		cur_heading = (dx, dy)
-		if cur_heading != heading and i != len(g_path) - 1:
-			gridPoints.append(prev_pt)
-			th_heading = math.atan2(heading[1], heading[0])
-			q_t = quaternion_from_euler(0, 0, th_heading)
-			quat_heading = Quaternion(*q_t)
-			w_ori.append(quat_heading)
-			heading = cur_heading
-		prev_pt = point
-	gridPoints.append(g_path[-1])
-	q_t = quaternion_from_euler(0, 0, 0)
-	quat_heading = Quaternion(*q_t)
-	w_ori.append(quat_heading)
-	'''
-
-	# Waypoints every 4 grids
-	prev_pt = g_path[0]
+	prev_pt = 0
 	tmp_ctr = 0	
-	for i, point, deg in g_path:
-		#rospy.sleep(1)
-		#print i, point
-		if i == len(g_path) - 1:
-			#print gridPoints
-			#print 1
-			#rospy.sleep(1)
-			gridPoints.append(g_path[i-1])
-
-			q_t = quaternion_from_euler(0, 0, 0)
-
-			w_ori.append(quat_heading)
-		elif tmp_ctr == 3:
-			#print gridPoints
-			#print 2
-			#rospy.sleep(1)
-			tmp_ctr = 0
-			gridPoints.append((i, point, deg))
-			#print prev_pt
-			dx = i - prev_pt[0]
-			dy = point - prev_pt[1]
-			heading = (dx, dy)
-			q_t = quaternion_from_euler(0, 0, deg)
-			prev_pt = (i, point, deg)
+	for pt in g_path:
+		tmp_ctr += 1
+		#print pt
+		#print tmp_ctr, len(g_path)
+		if(prev_pt == 0):
+			gridPoints.append(pt)
+			prev_pt = pt
+			yaw = math.radians(pt[2])
+			q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
+			w_ori.append(q_t)
+		elif(tmp_ctr == len(g_path)):
+			if(initial[2] == pt[2]):
+				prev_pt = pt
+			else:
+				gridPoints.append(pt)
+				prev_pt = pt
+				yaw = math.radians(pt[2])
+				q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
+				w_ori.append(q_t)
+		elif(prev_pt[2] == pt[2]):
+			prev_pt = pt
+		elif(prev_pt[2] != pt[2]):
+			gridPoints.append(pt)
+			prev_pt = pt
+			yaw = math.radians(pt[2])
+			q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
+			w_ori.append(q_t)
 		else:
-			#print gridPoints
-			#print 3
-			#rospy.sleep(1)
-			tmp_ctr += 1
+			prev_pt = pt
+		
 
 	# Convert grid points to world coordinates
+	c = 0
 	worldPoints = []
+	print len(gridPoints)
 	for point in gridPoints:
-		#print point
-		#print "hey"
-		#rospy.sleep(1)
 		point2=Point()
 		point2 = gridToWorld(point, worldMap) 
 		cells.cells.append(point2)
 		pose.position = gridToWorld(point, worldMap)
-		pose.orientation.x = q_t[0]
-		pose.orientation.y = q_t[1]
-		pose.orientation.z = q_t[2]
-		pose.orientation.w = q_t[3]
+		pose.orientation.x = w_ori[c][0]
+		pose.orientation.y = w_ori[c][1]
+		pose.orientation.z = w_ori[c][2]
+		pose.orientation.w = w_ori[c][3]
 		poseStamped.pose = pose
 		path.poses.append(poseStamped)
+		c += 1
 	# Create actual Path()
 	#print path
 	pubway.publish(cells)
@@ -217,7 +190,7 @@ def rvizPath(cell_list, worldMap):
 
 '''----------------------------------------Update Cells Function-----------------------------------------'''
 
-def publishFrontier(grid):
+def publishFrontier(grid, worldMap):
 	global pub_frontier
 		# resolution and offset of the map
 	k=0
@@ -225,10 +198,11 @@ def publishFrontier(grid):
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
-
+	
 	for node in grid:
-		point=Point()
-		point = worldToGrid(worldPoint, worldMap)
+		#print node
+		point = Point()
+		point = worldToGrid(node, worldMap)
 		cells.cells.append(point)
 	pub_frontier.publish(cells)
 
@@ -344,8 +318,10 @@ def navToPose(goal):
 			goal.pose.orientation.y,
 			goal.pose.orientation.z,
 			goal.pose.orientation.w)
-	theta0 = q0[2]
-	theta2 = math.degrees(q2[2])
+	euler = tf.transformations.euler_from_quaternion(q0)
+	euler2 = tf.transformations.euler_from_quaternion(q2)
+	theta0 = math.degrees(euler[2])
+	theta2 = math.degrees(euler2[2])
 
 	dx = x2 - x0
 	dy = y2 - y0
@@ -356,12 +332,8 @@ def navToPose(goal):
 	#dtheta0 = theta2 - theta0
 	distance = math.sqrt(dx**2 + dy**2)
 	
-	#print "dtheta0: %d" % dtheta0
-	#print "dtheta1: %d" % dtheta1
-	#print "theta0: %d" % theta0
-	#print "theta1: %d" % theta1
-	print q2
-	print "theta2: %d" % theta2
+	#print q2
+	#print "theta2: %d" % theta2
 
 	rotate(theta2)
 	driveStraight(0.1, distance)
@@ -549,13 +521,15 @@ if __name__ == '__main__':
 		print "Running A* algorithm..."
 
 		# Prepping for A*
+		tmp_wp_ctr = 0
 		origin_cache = []
 		origin_cache.append(map_cache.info.origin.position.x)
 		origin_cache.append(map_cache.info.origin.position.y)
 		q_tmp = map_cache.info.origin.orientation
 		quat_tmp = [q_tmp.x, q_tmp.y, q_tmp.z, q_tmp.w]
 		r_t, p_t, y_t = euler_from_quaternion(quat_tmp)
-		origin_cache.append(y_t)
+		d_t = math.degrees(y_t)
+		origin_cache.append(d_t)
 		res = map_cache.info.resolution
 		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res))
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
@@ -564,14 +538,15 @@ if __name__ == '__main__':
 		# Running A*
 		print start_cc, goal_cc
 		rospy.sleep(1)
-		generated_path, cost = aStar(start_cc, goal_cc, map_cache, wall)
+		generated_path, prev = aStar(start_cc, goal_cc, map_cache, wall)
 		print "Finished running A* algorithm"
 
 		if generated_path != None and not rospy.is_shutdown():
 			print "Updated RViz with path"
 			
 			rvizPath(generated_path, map_cache)
-			path = genWaypoints(generated_path, map_cache)
+			publishFrontier(prev, map_cache)
+			path = genWaypoints(generated_path, start_cc, map_cache)
 			waypoints_pub.publish(path)
 
 			print "Published generated path to topic: [/lab4/waypoints]"
@@ -579,13 +554,12 @@ if __name__ == '__main__':
 		print "Waypoints:"
 		tmp_wp_ctr = 0
 		for waypoint in path.poses:
-			#print tmp_wp_ctr, ": [", waypoint.pose.position.x, ", ", waypoint.pose.position.y, "]"
 			tmp_wp_ctr += 1
 
 		at_goal = False
 		#driveStraight(.1, .05) # drive straight to get bearing on map
+		tmp_wp_ctr = 0
 		while not at_goal and not rospy.is_shutdown():
-			tmp_wp_ctr = 0
 			curr_cc = []
 			for waypoint in path.poses:
 				print "Navigating to waypoint: ", tmp_wp_ctr
@@ -595,30 +569,21 @@ if __name__ == '__main__':
 				
 				navToPose(waypoint)
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
-			if world_map != None:
-				map_cache = world_map
-				generated_path, cost = aStar(curr_cc, goal_cc, map_cache, wall)
-
-				print "Updated RViz with path"
-				if(world_map == map_cache):
-					path = genWaypoints(generated_path, map_cache)
-					#print path
-					waypoints_pub.publish(path)
-					print "Published generated path to topic: [/lab4/waypoints]"
-					break
-				else:
+				if(world_map != None):
+					print "so far so good"
 					publishCells(world_data)
 					map_cache = world_map
 					start_cache = (pose.position.x, pose.position.y, pose.orientation.z)
 					start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
-					generated_path, cost = aStar(start_cc, goal_cc, map_cache, wall)
+					generated_path, prev = aStar(curr_cc, goal_cc, map_cache, wall)
 					rvizPath(generated_path, map_cache)
-					path = genWaypoints(generated_path, map_cache)
-					#print path
+					publishFrontier(prev, map_cache)
+					path = genWaypoints(generated_path, start_cc, map_cache)
 					waypoints_pub.publish(path)
 					print "Published generated path to topic: [/lab4/waypoints]"
-					break
-			if (curr_cc[0] == goal_cc[0] and curr_cc[1] == goal_cc[1]):
-				at_goal = True
+					print curr_cc, goal_cc
+					if (goal_cc[0] - 21.59 <= curr_cc[0] <= goal_cc[0] + 21.59 and goal_cc[1] - 21.59 <= curr_cc[1] <= goal_cc[1] + 21.59):
+						at_goal = True
+						break
 		
 	print "Exiting program"
