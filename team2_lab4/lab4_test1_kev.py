@@ -92,7 +92,7 @@ def worldToGrid(worldPoint, worldMap):
 
 # (grid) -> (real world)
 def gridToWorld(gridPoint, worldMap):
-	print gridPoint
+	#print gridPoint
 	gridx = float(gridPoint[0])
 	if(gridPoint[1] > 0):
 		gridy = float(gridPoint[1])
@@ -108,11 +108,12 @@ def gridToWorld(gridPoint, worldMap):
 
 # Generate Waypoints
 def genWaypoints(g_path_rev, worldMap):
-	#path = Path()
-	#path.header.frame_id = 'waypoints'
-	#poseStamped = PoseStamped()
-	#poseStamped.header.frame_id = 'waypoints'
-	#pose = Pose()
+	global pubway
+	path = Path()
+	path.header.frame_id = 'map'
+	poseStamped = PoseStamped()
+	poseStamped.header.frame_id = 'map'
+	pose = Pose()
 	cells = GridCells()
 	cells.header.frame_id = 'waypoints'
 	cells.cell_width = resolution 
@@ -150,42 +151,56 @@ def genWaypoints(g_path_rev, worldMap):
 	# Waypoints every 4 grids
 	prev_pt = g_path[0]
 	tmp_ctr = 0	
-	for i, point in g_path:
+	for i, point, deg in g_path:
 		#rospy.sleep(1)
 		#print i, point
 		if i == len(g_path) - 1:
-			gridPoints.append(g_path[-1])
+			#print gridPoints
+			#print 1
+			#rospy.sleep(1)
+			gridPoints.append(g_path[i-1])
 
 			q_t = quaternion_from_euler(0, 0, 0)
 
 			w_ori.append(quat_heading)
 		elif tmp_ctr == 3:
+			#print gridPoints
+			#print 2
+			#rospy.sleep(1)
 			tmp_ctr = 0
-			gridPoints.append((i, point))
+			gridPoints.append((i, point, deg))
 			#print prev_pt
 			dx = i - prev_pt[0]
 			dy = point - prev_pt[1]
 			heading = (dx, dy)
-			th_heading = math.atan2(heading[1], heading[0])
-			q_t = quaternion_from_euler(0, 0, th_heading)
-			
-			prev_pt = (i, point)
+			q_t = quaternion_from_euler(0, 0, deg)
+			prev_pt = (i, point, deg)
 		else:
+			#print gridPoints
+			#print 3
+			#rospy.sleep(1)
 			tmp_ctr += 1
 
 	# Convert grid points to world coordinates
 	worldPoints = []
 	for point in gridPoints:
-		point=Point()
-		point = gridToWorld(point, worldMap) 
-		cells.cells.append(point)
-		#pose.position = gridToWorld(point, worldMap)
-		#pose.orientation = q_t
-		#poseStamped.pose = pose
-		#path.poses.append(poseStamped)
+		#print point
+		#print "hey"
+		#rospy.sleep(1)
+		point2=Point()
+		point2 = gridToWorld(point, worldMap) 
+		cells.cells.append(point2)
+		pose.position = gridToWorld(point, worldMap)
+		pose.orientation.x = q_t[0]
+		pose.orientation.y = q_t[1]
+		pose.orientation.z = q_t[2]
+		pose.orientation.w = q_t[3]
+		poseStamped.pose = pose
+		path.poses.append(poseStamped)
 	# Create actual Path()
 	#print path
-	return cells
+	pubway.publish(cells)
+	return path
 
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
 
@@ -314,6 +329,9 @@ def publishTwist(lin_vel, ang_vel):
 # Drive to a goal subscribed as /move_base_simple/goal
 def navToPose(goal):
 	global pose
+	print goal
+	#rospy.sleep(1)
+	
 
 	x0 = pose.position.x		#Set origin
 	y0 = pose.position.y
@@ -327,68 +345,55 @@ def navToPose(goal):
 			goal.pose.orientation.y,
 			goal.pose.orientation.z,
 			goal.pose.orientation.w)
-	theta_tup_0 = euler_from_quaternion(q0)
-	theta0 = theta_tup_0[2]
-	theta_tup_2 = euler_from_quaternion(q2)
-	theta2 = theta_tup_2[2]
+	theta0 = q0[2]
+	theta2 = q2[2]
 
 	dx = x2 - x0
 	dy = y2 - y0
-	theta1 = math.atan2(dy, dx)
+	#theta1 = math.atan2(dy, dx)
 
-	dtheta0 = theta1 - theta0
-	dtheta1 = theta2 - theta1
+	#dtheta0 = theta1 - theta0
+	#dtheta1 = theta2 - theta1
+	#dtheta0 = theta2 - theta0
 	distance = math.sqrt(dx**2 + dy**2)
 	
-	'''
-	print "[x0: ", x0, "][y0: ", y0, "][theta0: ", theta0, "]"
-	print "[x2: ", x2, "][y2: ", y2, "][theta2: ", theta2, "]"
-	print "dtheta0: ", dtheta0
-	print "distance: ", distance
-	print "dtheta1: ", dtheta1
-	'''
-	rotate(dtheta0)
+	#print "dtheta0: %d" % dtheta0
+	#print "dtheta1: %d" % dtheta1
+	#print "theta0: %d" % theta0
+	#print "theta1: %d" % theta1
+	#print "theta2: %d" % theta2
+
+	rotate(theta2)
 	driveStraight(0.1, distance)
-	rotate(dtheta1)
+	#rotate(dtheta1)
 
 def rotate(angle):
 	global odom_list
 	global pose
+	global nav_pub
+	pose = Pose()
 
-	# This node was created using Coordinate system transforms and numpy arrays.
-	# The goal is measured in the turtlebot's frame, transformed to the odom.frame 
-	transformer = tf.TransformerROS()
-	rotation = numpy.array([[math.cos(angle), -math.sin(angle), 0],	 #Create goal rotation
-							[math.sin(angle),  math.cos(angle), 0],
-							[0,				0,		  	1]])
+	if(angle > 180 or angle < -180):
+		print "angle is too large or small"
+	
+	#set rotation direction 
+	error = angle - math.degrees(pose.orientation.z)
 
-	# Get transforms for frames
-	odom_list.waitForTransform('odom', 'base_footprint', rospy.Time(0), rospy.Duration(4.0))
-	(trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
-	T_o_t = transformer.fromTranslationRotation(trans, rot)
-	R_o_t = T_o_t[0:3,0:3]
+	if(angle < 0):
+		publishTwist(0,-.5)
+	else:
+		publishTwist(0, .5) 
 
-	# Setup goal matrix
-	goal_rot = numpy.dot(rotation, R_o_t)
-	goal_o = numpy.array([[goal_rot[0,0], goal_rot[0,1], goal_rot[0,2], T_o_t[0,3]],
-						  [goal_rot[1,0], goal_rot[1,1], goal_rot[1,2], T_o_t[1,3]],
-						  [goal_rot[2,0], goal_rot[2,1], goal_rot[2,2], T_o_t[2,3]],
-						  [0,			 0,			 0,			 1]])
+	while((abs(error) >= 2) and not rospy.is_shutdown()):
+		ang_vel = error/45
+		if(ang_vel < .1 and ang_vel > 0):
+			ang_vel = .1
+	   	if(ang_vel > -.1 and ang_vel < 0):
+			ang_vel = -.1
+		publishTwist(0, ang_vel)
+		error = angle - math.degrees(pose.orientation.z)
+	publishTwist(0, 0)
 
-   # Continues creating and matching coordinate transforms.
-	done = False
-	while (not done and not rospy.is_shutdown()):
-		(trans, rot) = odom_list.lookupTransform('odom', 'base_footprint', rospy.Time(0))
-		state = transformer.fromTranslationRotation(trans, rot)
-		within_tolerance = abs((state - goal_o)) < .2
-		if (within_tolerance.all()):
-			publishTwist(0, 0)
-			done = True
-		else:
-			if (angle > 0):
-				publishTwist(0, 0.5)
-			else:
-				publishTwist(0, -0.5)
 
 #This function accepts a speed and a distance for the robot to move in a straight line
 def driveStraight(speed, distance):
@@ -486,7 +491,7 @@ if __name__ == '__main__':
 
 	path_pub = rospy.Publisher('/lab4/path', GridCells, queue_size=1)
 	waypoints_pub = rospy.Publisher('/lab4/waypoints', Path, queue_size=1)
-	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, queue_size=1)
+	nav_pub = rospy.Publisher('/cmd_vel_mux/input/teleop', Twist, None, queue_size=10)
 	pub = rospy.Publisher("/map_check", GridCells, queue_size=1)  
 	pub_frontier = rospy.Publisher('map_frontier', GridCells, queue_size=1)
 	pubpath = rospy.Publisher("/path", GridCells, queue_size=1) # you can use other types if desired
@@ -564,7 +569,7 @@ if __name__ == '__main__':
 			
 			rvizPath(generated_path, map_cache)
 			path = genWaypoints(generated_path, map_cache)
-			pubway.publish(path)
+			waypoints_pub.publish(path)
 
 			print "Published generated path to topic: [/lab4/waypoints]"
 		
@@ -575,6 +580,7 @@ if __name__ == '__main__':
 			tmp_wp_ctr += 1
 
 		at_goal = False
+		driveStriaght(.1, .5) # drive straight to get bearing on map
 		while not at_goal and not rospy.is_shutdown():
 			tmp_wp_ctr = 0
 			curr_cc = []
@@ -583,6 +589,7 @@ if __name__ == '__main__':
 				tmp_wp_ctr += 1
 
 				# Replanning
+				
 				navToPose(waypoint)
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
 			if world_map != None:
@@ -590,12 +597,24 @@ if __name__ == '__main__':
 				generated_path, cost = aStar(curr_cc, goal_cc, map_cache, wall)
 
 				print "Updated RViz with path"
-				rvizPath(generated_path, map_cache)
-				path = genWaypoints(generated_path, map_cache)
-				#print path
-				pubway.publish(path)
-				print "Published generated path to topic: [/lab4/waypoints]"
-				break
+				if(world_map == map_cahce):
+					path = genWaypoints(generated_path, map_cache)
+					#print path
+					waypoints_pub.publish(path)
+					print "Published generated path to topic: [/lab4/waypoints]"
+					break
+				else:
+					publishCells(world_data)
+					map_cache = world_map
+					start_cache = (pose.position.x, pose.position.y, pose.orientation.z)
+					start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
+					generated_path, cost = aStar(start_cc, goal_cc, map_cache, wall)
+					rvizPath(generated_path, map_cache)
+					path = genWaypoints(generated_path, map_cache)
+					#print path
+					waypoints_pub.publish(path)
+					print "Published generated path to topic: [/lab4/waypoints]"
+					break
 			if (curr_cc[0] == goal_cc[0] and curr_cc[1] == goal_cc[1]):
 				at_goal = True
 		
