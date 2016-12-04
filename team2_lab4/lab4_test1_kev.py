@@ -217,59 +217,34 @@ def publishCells(grid):
 	cells.header.frame_id = 'map'
 	cells.cell_width = resolution 
 	cells.cell_height = resolution
-	
+	cY = 0
+	cX = 0
 	for i in range(0,height): #height should be set to height of grid
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
-			
-			case1 = (i+1)*width+j
-			case2 = (i)*width+(j+1)
-			case3 = (i-1)*width+j
-			case4 = (i)*width+(j-1)
-
 			if (grid[i*width+j] == 100):
-				point=Point()
-				point.x=(j*resolution)+offsetX + (.5 * resolution)
-				point.y=(i*resolution)+offsetY + (.5 * resolution)
-				point.z=0
-				wall.append((j,i))
-				cells.cells.append(point)
-
-			elif (0 <= case1 and case1 <= (height * width - 1)):
-				if(grid[(i+1)*width+j] == 100):
-					point=Point()
-					point.x=(j*resolution) + offsetX + (.5 * resolution)
-					point.y=(i*resolution) + offsetY + (.5 * resolution)
-					point.z=0
-					wall.append((j,i))
-					cells.cells.append(point)
-
-			elif (0 <= case2 and case2 <= (height * width - 1) and case2 == 100):
-				if(grid[(i)*width+(j+1)] == 100):
-					point=Point()
-					point.x=(j*resolution) + offsetX + (.5 * resolution)
-					point.y=(i*resolution) + offsetY + (.5 * resolution)
-					point.z=0
-					wall.append((j,i))
-					cells.cells.append(point)
-
-			elif (0 <= case3 and case3 <= (height * width - 1) and case3 == 100):
-				if(grid[(i-1)*width+j] == 100):
-					point=Point()
-					point.x=(j*resolution) + offsetX + (.5 * resolution)
-					point.y=(i*resolution) + offsetY + (.5 * resolution)
-					point.z=0
-					wall.append((j,i))
-					cells.cells.append(point)
-
-			elif (0 <= case4 and case4 <= (height * width - 1) and case4 == 100):
-				if(grid[(i)*width+(j-1)] == 100):
-					point=Point()
-					point.x=(j*resolution) + offsetX + (.5 * resolution)
-					point.y=(i*resolution) + offsetY + (.5 * resolution)
-					point.z=0
-					wall.append((j,i))
-					cells.cells.append(point)
+				while(cY != 5):
+					cX = 0
+					while(cX != 5):	
+						case1 = (i+cY)*width+(j+cX)
+						case2 = (i-cY)*width+(j-cX)
+						if(0 <= case1 and case1 <= (height * width - 1)):
+							point=Point()
+							point.x=((j+cX)*resolution)+offsetX + (.5 * resolution)
+							point.y=((i+cY)*resolution)+offsetY + (.5 * resolution)
+							point.z=0
+							wall.append((j+cX,i+cY))
+							cells.cells.append(point)
+						elif(0 <= case2 and case2 <= (height * width - 1)):
+							point=Point()
+							point.x=((j-cX)*resolution)+offsetX + (.5 * resolution)
+							point.y=((i-cY)*resolution)+offsetY + (.5 * resolution)
+							point.z=0
+							wall.append((j-cX,i-cY))
+							cells.cells.append(point)
+						cX += 1
+					cY += 1
+				cY = 0
 	pub.publish(cells)
 
 '''----------------------------------------Navigation Functions-----------------------------------------'''
@@ -360,8 +335,12 @@ def rotate(angle):
 		ang_vel = error/45
 		if(ang_vel < .1 and ang_vel > 0):
 			ang_vel = .1
-	   	if(ang_vel > -.1 and ang_vel < 0):
+	   	elif(ang_vel > -.1 and ang_vel < 0):
 			ang_vel = -.1
+		elif(ang_vel > 1):
+			ang_vel = 1
+		elif(ang_vel < -1):
+			ang_vel = -1
 		publishTwist(0, ang_vel)
 		error = angle - math.degrees(pose.orientation.z)
 	publishTwist(0, 0)
@@ -479,7 +458,7 @@ if __name__ == '__main__':
 	while world_map == None and not rospy.is_shutdown():
 		pass
 	map_cache = world_map
-	world_map = None
+	#world_map = None
 	print "Received map"
 	
 	while not rospy.is_shutdown():
@@ -487,6 +466,7 @@ if __name__ == '__main__':
 		publishCells(world_data)
 		flag_cache = neworldMap_flag
 		neworldMap_flag = 0
+		tolerance = 23
 		if flag_cache > 0:
 			flag_cache = 0
 		# Initialization
@@ -494,7 +474,7 @@ if __name__ == '__main__':
 
 		if world_map != None:
 			map_cache = world_map
-			world_map = None
+			#world_map = None
 			print "Updated map cache"
 
 		#start_cache = []
@@ -569,6 +549,7 @@ if __name__ == '__main__':
 				
 				navToPose(waypoint)
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
+				print world_map.info
 				if(world_map != None):
 					print "so far so good"
 					publishCells(world_data)
@@ -582,7 +563,7 @@ if __name__ == '__main__':
 					waypoints_pub.publish(path)
 					print "Published generated path to topic: [/lab4/waypoints]"
 					print curr_cc, goal_cc
-					if (goal_cc[0] - 21.59 <= curr_cc[0] <= goal_cc[0] + 21.59 and goal_cc[1] - 21.59 <= curr_cc[1] <= goal_cc[1] + 21.59):
+					if (goal_cc[0] - tolerance <= curr_cc[0] <= goal_cc[0] + tolerance and goal_cc[1] - tolerance <= curr_cc[1] <= goal_cc[1] + tolerance):
 						at_goal = True
 						break
 		
