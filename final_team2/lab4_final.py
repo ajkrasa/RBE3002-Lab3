@@ -548,7 +548,6 @@ if __name__ == '__main__':
 			tmp_wp_ctr += 1
 
 		at_goal = False
-		#driveStraight(.1, .05) # drive straight to get bearing on map
 		tmp_wp_ctr = 0
 		while not at_goal and not rospy.is_shutdown():
 			curr_cc = []
