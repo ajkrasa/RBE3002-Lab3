@@ -367,6 +367,16 @@ def driveStraight(speed, distance):
 	publishTwist(0,0)
 	rospy.sleep(.5)
 
+#Bumper Event Callback function
+def readBumper(msg):
+	"""Bumper event callback"""
+	if (msg.state == 1):
+        # When pressed the wheels will immediatley stop moving and will not move until the button is no longer being pressed
+		print "Bumper pressed!"
+		#Replace       
+		executeTrajectory()
+
+
 # Odometry Callback function.
 def readOdom(event):
 	global pose
