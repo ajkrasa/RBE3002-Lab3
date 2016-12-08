@@ -11,7 +11,6 @@ from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
 def checkerFrontier(grid):
-	global frontiers
 	frontiers = []
 	x = 0
 	for i in range(0,height): #height should be set to height of grid
@@ -19,16 +18,16 @@ def checkerFrontier(grid):
 			#print k # used for debugging
 			if (grid[i*width+j] == -1 and x == 0):
 					point=Point()
-					point.x=(j*resolution)+offsetX + (.5 * resolution)
-					point.y=(i*resolution)+offsetY + (.5 * resolution)
+					point.x=((j - 5)*resolution)+offsetX + (.5 * resolution)
+					point.y=((i - 5)*resolution)+offsetY + (.5 * resolution)
 					point.z=0
 					frontiers.append(point)
 					x = 5
 			elif(x != 0):
 				x -= 1
+	return frontiers
 
-def checkClosestFrontier(current):
-	global frontiers
+def checkClosestFrontier(frontiers, current):
 	cX = 0
 	cY = 0
 	pX = 0
