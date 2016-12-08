@@ -414,6 +414,7 @@ if __name__ == '__main__':
 	global odom_tf
 	global odom_list
 	global prev_twist
+	global pubway
 
 	# Initialize Global Variables
 	wall = []
