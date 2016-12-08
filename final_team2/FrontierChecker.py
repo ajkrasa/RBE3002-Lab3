@@ -1,35 +1,13 @@
 #!/usr/bin/env python
 
 import rospy, tf, numpy, math, roslib, time
+
 from newastar import aStar
 from nav_msgs.msg import GridCells, Path, Odometry, OccupancyGrid
 from std_msgs.msg import String, Header
-
 from geometry_msgs.msg import Twist, Point, Pose, PoseStamped, PoseWithCovarianceStamped, Point, Quaternion
-
 from kobuki_msgs.msg import BumperEvent
-
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-
-
-'''
-def publishFrontier(grid):
-	global pub_frontier
-		# resolution and offset of the map
-	k=0
-	cells = GridCells()
-	cells.header.frame_id = 'map'
-	cells.cell_width = resolution 
-	cells.cell_height = resolution
-
-	for node in grid:
-		point=Point()
-		point = worldToGrid(worldPoint, worldMap)
-		cells.cells.append(point)
-	pub_frontier.publish(cells)
-
-	pub_frontier = rospy.Publisher('map_frontier', GridCells, queue_size=1)
-'''
 
 
 def checkerFrontier(grid):
@@ -66,5 +44,7 @@ def checkClosestFrontier(current):
 			closest = (i.x, i.y)
 		pX = cX
 		pY = cY
-	return closest 
-	
+	return closest
+
+
+# Add def for publishing frontiers, and make them go 5 cells out from closest known point
