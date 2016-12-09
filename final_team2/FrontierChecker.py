@@ -10,11 +10,16 @@ from kobuki_msgs.msg import BumperEvent
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
-def checkerFrontier(grid):
+def checkerFrontier(maps, grid):
 	frontiers = []
+	width = maps.info.width
+	height = maps.info.height
+	resolution = maps.info.resolution
+	offsetX = maps.info.origin.position.x
+	offsetY = maps.info.origin.position.y
 	x = 0
-	for i in range(0,height): #height should be set to height of grid
-		for j in range(0,width): #width should be set to width of grid
+	for i in range(0, height): #height should be set to height of grid
+		for j in range(0, width): #width should be set to width of grid
 			#print k # used for debugging
 			if (grid[i*width+j] == -1 and x == 0):
 					point=Point()
