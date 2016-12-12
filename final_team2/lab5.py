@@ -108,10 +108,10 @@ def genWaypoints(g_path_rev, initial, worldMap):
 	poseStamped = PoseStamped()
 	poseStamped.header.frame_id = 'map'
 	pose = Pose()
-	cells = GridCells()
-	cells.header.frame_id = 'waypoints'
-	cells.cell_width = resolution 
-	cells.cell_height = resolution
+	#cells = GridCells()
+	#cells.header.frame_id = 'waypoints'
+	#cells.cell_width = resolution 
+	#cells.cell_height = resolution
 
 	gridPoints = []
 	w_ori = []
@@ -130,6 +130,7 @@ def genWaypoints(g_path_rev, initial, worldMap):
 			yaw = math.radians(pt[2])
 			q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
 			w_ori.append(q_t)
+			#print w_ori
 		elif(tmp_ctr == len(g_path)):
 			if(initial[2] == pt[2]):
 				prev_pt = pt
@@ -139,6 +140,7 @@ def genWaypoints(g_path_rev, initial, worldMap):
 				yaw = math.radians(pt[2])
 				q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
 				w_ori.append(q_t)
+				#print w_ori
 		elif(prev_pt[2] == pt[2]):
 			prev_pt = pt
 		elif(prev_pt[2] != pt[2]):
@@ -147,6 +149,7 @@ def genWaypoints(g_path_rev, initial, worldMap):
 			yaw = math.radians(pt[2])
 			q_t = tf.transformations.quaternion_from_euler(0, 0, yaw)
 			w_ori.append(q_t)
+			
 		else:
 			prev_pt = pt
 		
@@ -156,9 +159,9 @@ def genWaypoints(g_path_rev, initial, worldMap):
 	worldPoints = []
 	print len(gridPoints)
 	for point in gridPoints:
-		point2=Point()
-		point2 = gridToWorld(point, worldMap) 
-		cells.cells.append(point2)
+		#point2=Point()
+		#point2 = gridToWorld(point, worldMap) 
+		#cells.cells.append(point2)
 		pose.position = gridToWorld(point, worldMap)
 		pose.orientation.x = w_ori[c][0]
 		pose.orientation.y = w_ori[c][1]
@@ -169,7 +172,7 @@ def genWaypoints(g_path_rev, initial, worldMap):
 		c += 1
 	# Create actual Path()
 	#print path
-	pubway.publish(cells)
+	#pubway.publish(cells)
 	return path
 
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
@@ -210,7 +213,8 @@ def publishFrontier(grid):
 def publishCells(grid):
 	global pub
 	global wall
-	
+	wall = None
+	wall = []
 	# resolution and offset of the map
 	k=-2
 	cells = GridCells()
@@ -223,9 +227,9 @@ def publishCells(grid):
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
 			if (grid[i*width+j] == 100):
-				while(cY != 5):
+				while(cY != 3):
 					cX = 0
-					while(cX != 5):	
+					while(cX != 3):	
 						case1 = (i+cY)*width+(j+cX)
 						case2 = (i-cY)*width+(j-cX)
 						if(0 <= case1 and case1 <= (height * width - 1)):
@@ -307,9 +311,9 @@ def navToPose(goal):
 	#dtheta0 = theta2 - theta0
 	distance = math.sqrt(dx**2 + dy**2)
 	
-	#print q2
-	#print "theta2: %d" % theta2
-
+	print "distance: %d" % distance
+	print "theta2: %d" % theta2
+	
 	rotate(theta2)
 	driveStraight(0.1, distance)
 	#rotate(dtheta1)
@@ -399,6 +403,7 @@ Main Setup
 
 def initial():
 	rotate(180)
+	rotate(-180)
 
 
 def run():	
@@ -480,9 +485,12 @@ def run():
 	#world_map = None
 	print "Received map"
 
+	print "initial"
 	initial()
+	print "end initial"
 
 	frontiers = checkerFrontier(map_cache, world_data)
+	tolerance = 23
 	
 	while not rospy.is_shutdown() and frontiers != None:
 		path = Path()
@@ -505,15 +513,20 @@ def run():
 		d_t = math.degrees(y_t)
 		origin_cache.append(d_t)
 		res = map_cache.info.resolution
-		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res))
+		print start_cache
+		print origin_cache
+		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res), 0)
+		print map_origin
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
-		goal_cache = checkClosestFrontier(frontiers, start_cc)
+		goal_cache = checkClosestFrontier(frontiers, start_cache)
+		print goal_cache
 		goal_cc = [int(goal_cache[0]/res) + map_origin[0], int(goal_cache[1]/res) + map_origin[1], 0]
 		
 		# Running A*
 		print start_cc, goal_cc
 		rospy.sleep(1)
 		publishFrontier(goal_cache)
+
 		generated_path, prev = aStar(start_cc, goal_cc, map_cache, wall)
 		print "Finished running A* algorithm"
 
@@ -535,13 +548,14 @@ def run():
 		tmp_wp_ctr = 0
 		while not at_goal and not rospy.is_shutdown():
 			curr_cc = []
+			#print path.poses
 			for waypoint in path.poses:
 				print "Navigating to waypoint: ", tmp_wp_ctr
 				tmp_wp_ctr += 1
 
 				# Replanning
-				
 				navToPose(waypoint)
+				print "stuck on NavToPose"
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
 				print world_map.info
 				if(world_map != None):
@@ -560,7 +574,7 @@ def run():
 						at_goal = True
 						break
 		
-		frontiers = checkerFrontier(map_data)
+		frontiers = checkerFrontier(map_cache, world_data)
 
 
 
@@ -570,5 +584,6 @@ def run():
 if __name__ == '__main__':
 	try:
 		run()
+		print "done"
 	except rospy.ROSInterruptException:
 		pass

@@ -23,9 +23,10 @@ def checkerFrontier(maps, grid):
 			#print k # used for debugging
 			if (grid[i*width+j] == -1 and x == 0):
 					point=Point()
-					point.x=((j - 5)*resolution)+offsetX + (.5 * resolution)
-					point.y=((i - 5)*resolution)+offsetY + (.5 * resolution)
+					point.x=((j-3)*resolution)+offsetX + (.5 * resolution)
+					point.y=((i-3)*resolution)+offsetY + (.5 * resolution)
 					point.z=0
+					
 					frontiers.append(point)
 					x = 5
 			elif(x != 0):
@@ -40,8 +41,8 @@ def checkClosestFrontier(frontiers, current):
 	closest = 0
 	
 	for i in frontiers:
-		cX = abs(i.x - current[0])
-		cY = abs(i.y - current[1])
+		cX = abs(i.x - abs(current[0]))
+		cY = abs(i.y - abs(current[1]))
 		if(closest == 0):
 			closest = (i.x, i.y)
 		elif(cX < pX and cY < pY):

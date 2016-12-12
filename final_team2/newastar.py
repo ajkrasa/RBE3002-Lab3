@@ -75,23 +75,25 @@ def Solve(node, start, goal):
 	came_from[start] = None
 	cost_so_far[start] = 0
 
-	print "hey"
 	while not frontier.empty():
 		current = frontier.pop()
 		
-		if(current == goal):
+		if(current[0] == goal[0] and current[1] == goal[1]):
+			came_from[goal] = current	
 			break
 
 		for i in node.neighbors(current):
-			
+			#print i
+			#rospy.sleep(1)
 			new_cost = cost_so_far[current] + 1
 			if i not in cost_so_far or new_cost < cost_so_far[i]:
+				#print i
+				#rospy.sleep(.5)
 				cost_so_far[i] = new_cost
 				priority = new_cost + heuristic(goal, i)
 				frontier.push(i, priority)
 				came_from[i] = current
-	print "hey2"
-	return came_from, came_from
+	return came_from, cost_so_far
 
 def reconstruct_path(came_from, start, goal):
 	#print came_from
@@ -109,13 +111,9 @@ def reconstruct_path(came_from, start, goal):
 def aStar(start, goal, grid, wall):
 	init = (start[0], start[1], start[2])
 	end = (goal[0], goal[1], goal[2])
-	print init, end
 	origin = Node(init, init, end, grid, wall)
-	print "here"
 	fron, prev = Solve(origin, init, end)
-	print "here1"
 	solution = reconstruct_path(fron, init, end)
-	print "here2"
 	print solution
 	#rospy.sleep(1)
 	#print cost
