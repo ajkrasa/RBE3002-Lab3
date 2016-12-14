@@ -518,7 +518,7 @@ def run():
 		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res), 0)
 		print map_origin
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
-		goal_cache = checkClosestFrontier(frontiers, start_cache)
+		goal_cache = checkClosestFrontier(frontiers, start_cache, map_cache, wall)
 		print goal_cache
 		goal_cc = [int(goal_cache[0]/res) + map_origin[0], int(goal_cache[1]/res) + map_origin[1], 0]
 		
