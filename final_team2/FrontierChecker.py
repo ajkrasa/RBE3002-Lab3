@@ -8,42 +8,46 @@ from std_msgs.msg import String, Header
 from geometry_msgs.msg import Twist, Point, Pose, PoseStamped, PoseWithCovarianceStamped, Point, Quaternion
 from kobuki_msgs.msg import BumperEvent
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from newastar import aStar
 
-
-def checkerFrontier(grid):
-	global frontiers
+def checkerFrontier(maps, grid):
 	frontiers = []
+	width = maps.info.width
+	height = maps.info.height
+	resolution = maps.info.resolution
+	offsetX = maps.info.origin.position.x
+	offsetY = maps.info.origin.position.y
 	x = 0
-	for i in range(0,height): #height should be set to height of grid
-		for j in range(0,width): #width should be set to width of grid
+	for i in range(0, height): #height should be set to height of grid
+		for j in range(0, width): #width should be set to width of grid
 			#print k # used for debugging
 			if (grid[i*width+j] == -1 and x == 0):
 					point=Point()
-					point.x=(j*resolution)+offsetX + (.5 * resolution)
-					point.y=(i*resolution)+offsetY + (.5 * resolution)
+					point.x=((j-3)*resolution)+offsetX + (.5 * resolution)
+					point.y=((i-3)*resolution)+offsetY + (.5 * resolution)
 					point.z=0
+					
 					frontiers.append(point)
 					x = 5
 			elif(x != 0):
 				x -= 1
+	return frontiers
 
-def checkClosestFrontier(current):
-	global frontiers
-	cX = 0
-	cY = 0
-	pX = 0
-	pY = 0
+def checkClosestFrontier(frontiers, current, grid, wall):
+	cP = []
+	uselessData = {}
+	pP = []
 	closest = 0
-	
+	goal = 0
 	for i in frontiers:
-		cX = abs(i.x - current[0])
-		cY = abs(i.y - current[1])
+		goal = (i.x, i.y, i.z)
+		cP, uselessData = aStar(current, goal, grid, wall)
 		if(closest == 0):
+			pP = cP
 			closest = (i.x, i.y)
-		elif(cX < pX and cY < pY):
+		elif(len(cP) < len(pP) and len(cP) < len(pP)):
+			pP = cP
 			closest = (i.x, i.y)
-		pX = cX
-		pY = cY
 	return closest
 
 
