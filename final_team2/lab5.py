@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 import rospy, tf, numpy, math, roslib, time
 
@@ -37,6 +37,7 @@ def readWorldMapCallback(data):
 	height = data.info.height
 	print data.info
 
+#Calculates the position of the goal
 def goalCallback(data):
 	global goal_pose
 	tmp_buf = []
@@ -53,7 +54,7 @@ def costMapCallback(data):
 	global cost_map
 	cost_map = data
 
-
+#Calculates the starting position
 def readStart(startPos):
 	global startRead
 	startRead = True
@@ -76,6 +77,7 @@ def readStart(startPos):
 '''-----------------------------------------Helper Functions--------------------------------------------'''
 
 # (real world) -> (grid)
+#Converts cm to gridcell coordinates
 def worldToGrid(worldPoint, worldMap):
 	res = worldMap.info.resolution
 	gridPoint = Point()
@@ -85,6 +87,7 @@ def worldToGrid(worldPoint, worldMap):
 	return gridPoint
 
 # (grid) -> (real world)
+#Convers gridcell coordinates to cm
 def gridToWorld(gridPoint, worldMap):
 	#print gridPoint
 	gridx = float(gridPoint[0])
@@ -174,7 +177,7 @@ def genWaypoints(g_path_rev, initial, worldMap):
 	return path
 
 '''-----------------------------------------Update Grid Functions---------------------------------------'''
-
+#Displays the path
 def rvizPath(cell_list, worldMap):
 	global path_pub	
 	path_GC = GridCells()
@@ -207,7 +210,7 @@ def publishFrontier(grid):
 		cells.cells.append(point)
 	pub_frontier.publish(cells)
 
-
+#Determines whether or not a gridcell is an obstacle
 def publishCells(grid):
 	global pub
 	global wall
@@ -225,9 +228,10 @@ def publishCells(grid):
 		for j in range(0,width): #width should be set to width of grid
 			#print k # used for debugging
 			if (grid[i*width+j] == 100):
-				while(cY != 3):
+				#Include any gridcell within a certain distance
+				while(cY != 5):
 					cX = 0
-					while(cX != 3):	
+					while(cX != 5):	
 						case1 = (i+cY)*width+(j+cX)
 						case2 = (i-cY)*width+(j-cX)
 						if(0 <= case1 and case1 <= (height * width - 1)):
@@ -316,6 +320,7 @@ def navToPose(goal):
 	driveStraight(0.1, distance)
 	#rotate(dtheta1)
 
+#Rotate to the given angle
 def rotate(angle):
 	global odom_list
 	global pose
@@ -401,6 +406,7 @@ def readOdom(event):
 Main Setup
 '''
 
+#First thing called to navigate through the map, used to get additional information of the environment
 def initial():
 	driveStraight(0.1, .2)
 	rotate(25)
@@ -512,13 +518,13 @@ def run():
 		d_t = math.degrees(y_t)
 		origin_cache.append(d_t)
 		res = map_cache.info.resolution
-		#print start_cache
-		#print origin_cache
+		
+		#calculate the gridcell coordinates
 		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res), 0)
 		#print map_origin
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
 		goal_cache = checkClosestFrontier(frontiers, res, map_origin, start_cc, map_cache, wall)
-		print goal_cache
+		#print goal_cache
 		goal_cc = [int(goal_cache[0]/res) + map_origin[0], int(goal_cache[1]/res) + map_origin[1], 0]
 		
 		# Running A*
@@ -532,6 +538,7 @@ def run():
 		if generated_path != None and not rospy.is_shutdown():
 			print "Updated RViz with path"
 			
+			#Publish the path and generate waypoints
 			rvizPath(generated_path, map_cache)
 			path = genWaypoints(generated_path, start_cc, map_cache)
 			waypoints_pub.publish(path)
@@ -539,19 +546,22 @@ def run():
 			print "Published generated path to topic: [/lab5/waypoints]"
 
 		print "Waypoints:"
-		tmp_wp_ctr = 0
-		for waypoint in path.poses:
-			tmp_wp_ctr += 1
-
 		at_goal = False
 		tmp_wp_ctr = 0
-		while not at_goal and not rospy.is_shutdown():
+		
+		#Until the goal is reached or it has gone through to many waypoints keep trying
+		while not at_goal and tmp_wp_ctr < 5 and not rospy.is_shutdown():
 			curr_cc = []
 			#print path.poses
+
+			#Go through each waypoint
 			for waypoint in path.poses:
 				print "Navigating to waypoint: ", tmp_wp_ctr
 				tmp_wp_ctr += 1
-
+	
+				#If the at the fith generated waypoint break out, frontier is no longer the closest
+				if(tmp_wp_ctr >= 5):
+					break
 				# Replanning
 				navToPose(waypoint)
 				#print "stuck on NavToPose"
@@ -563,6 +573,8 @@ def run():
 					map_cache = world_map
 					start_cache = (pose.position.x, pose.position.y, pose.orientation.z)
 					start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
+					if(start_cc[0] - tolerance < curr_cc[0] < start_cc[0] + tolerance and start_cc[1] - tolerance <= curr_cc[1] <= start_cc[1] + tolerance):
+						curr_cc = start_cc
 					generated_path, prev = aStar(curr_cc, goal_cc, map_cache, wall)
 					rvizPath(generated_path, map_cache)
 					path = genWaypoints(generated_path, start_cc, map_cache)
@@ -573,6 +585,7 @@ def run():
 						at_goal = True
 						break
 		print "restarting"
+		#Are there more frontiers?
 		frontiers = checkerFrontier(map_cache, world_data)
 
 
