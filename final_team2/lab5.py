@@ -88,10 +88,8 @@ def worldToGrid(worldPoint, worldMap):
 def gridToWorld(gridPoint, worldMap):
 	#print gridPoint
 	gridx = float(gridPoint[0])
-	if(gridPoint[1] > 0):
-		gridy = float(gridPoint[1])
-	else:
-		print "Tuple Trouble"
+	gridy = float(gridPoint[1])
+	
 	res = worldMap.info.resolution
 	#print res
 	worldPoint = Point()
@@ -341,10 +339,10 @@ def rotate(angle):
 			ang_vel = .1
 	   	elif(ang_vel > -.1 and ang_vel < 0):
 			ang_vel = -.1
-		elif(ang_vel > 1):
-			ang_vel = 1
-		elif(ang_vel < -1):
-			ang_vel = -1
+		elif(ang_vel > .6):
+			ang_vel = .5
+		elif(ang_vel < -.6):
+			ang_vel = -.5
 		publishTwist(0, ang_vel)
 		error = angle - math.degrees(pose.orientation.z)
 	publishTwist(0, 0)
@@ -377,8 +375,10 @@ def readBumper(msg):
 	if (msg.state == 1):
         # When pressed the wheels will immediatley stop moving and will not move until the button is no longer being pressed
 		print "Bumper pressed!"
-		#Replace       
-		executeTrajectory()
+		#Replace      
+		rotate(90)
+		driveStraight(0.1, 1) 
+		at_goal = True
 
 
 # Odometry Callback function.
@@ -402,9 +402,8 @@ Main Setup
 '''
 
 def initial():
-	rotate(180)
-	rotate(-180)
-
+	driveStraight(0.1, .2)
+	rotate(25)
 
 def run():	
 	global pub
@@ -456,7 +455,7 @@ def run():
 	navgoal_sub = rospy.Subscriber('/move_base_simple/2goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
 	goal_sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart, queue_size=1) #change topic for best results
 	cost_pub = rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, costMapCallback)
-	#bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
+	bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
 
 	
 	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
@@ -513,12 +512,12 @@ def run():
 		d_t = math.degrees(y_t)
 		origin_cache.append(d_t)
 		res = map_cache.info.resolution
-		print start_cache
-		print origin_cache
+		#print start_cache
+		#print origin_cache
 		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res), 0)
-		print map_origin
+		#print map_origin
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
-		goal_cache = checkClosestFrontier(frontiers, start_cache, map_cache, wall)
+		goal_cache = checkClosestFrontier(frontiers, res, map_origin, start_cc, map_cache, wall)
 		print goal_cache
 		goal_cc = [int(goal_cache[0]/res) + map_origin[0], int(goal_cache[1]/res) + map_origin[1], 0]
 		
@@ -555,7 +554,7 @@ def run():
 
 				# Replanning
 				navToPose(waypoint)
-				print "stuck on NavToPose"
+				#print "stuck on NavToPose"
 				curr_cc = [int(waypoint.pose.position.x/res) + map_origin[0], int(waypoint.pose.position.y/res) + map_origin[1], 0]
 				print world_map.info
 				if(world_map != None):
@@ -573,7 +572,7 @@ def run():
 					if (goal_cc[0] - tolerance <= curr_cc[0] <= goal_cc[0] + tolerance and goal_cc[1] - tolerance <= curr_cc[1] <= goal_cc[1] + tolerance):
 						at_goal = True
 						break
-		
+		print "restarting"
 		frontiers = checkerFrontier(map_cache, world_data)
 
 
