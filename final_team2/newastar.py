@@ -29,18 +29,20 @@ class Node:
 		#if(len(self.path) == 0):
 		#	self.path.append(start)
 
+	#makes sure the child is within the limits of the map
 	def in_bounds(self, tup):
 		(x, y, z) = tup
 		return 0 <= x < self.width and 0 <= y < self.height
 	
+	#makes sure the child is not an obstacle
 	def passable(self, tup):
 		(x, y, z) = tup
 		tup2 = (x, y)
 		return tup2 not in self.wall
 
+	#makes the child
 	def neighbors(self, tup):
 		(x, y, z) = tup
-
 		results = [(x+1, y, 0), (x, y-1, 270), (x-1, y, 180), (x, y+1, 90)]
 		results = filter(self.in_bounds, results)
 		results = filter(self.passable, results)
@@ -64,7 +66,7 @@ class PriorityQueue:
 
 
 def heuristic(a, b):
-		#Manhattan distance
+		#Straight Line Distance
 		return abs(a[0]- b[0]) + abs(a[1] - b[1])	
 
 def Solve(node, start, goal):
@@ -78,14 +80,16 @@ def Solve(node, start, goal):
 	while not frontier.empty():
 		current = frontier.pop()
 		
+		#If the Algorithm reached the goal and add the goal to the map in case the orientation is different
 		if(current[0] == goal[0] and current[1] == goal[1]):
 			came_from[goal] = current	
 			break
-
+		#Iterates through all possible children
 		for i in node.neighbors(current):
 			#print i
 			#rospy.sleep(1)
 			new_cost = cost_so_far[current] + 1
+			#If the child has already been visited don't call it again
 			if i not in cost_so_far or new_cost < cost_so_far[i]:
 				#print i
 				#rospy.sleep(.5)
@@ -99,20 +103,28 @@ def reconstruct_path(came_from, start, goal):
 	#print came_from
 	current = goal
 	path = [current]
+	#Go through the map until the path is reconstructed
 	while (current != start):
-		#print current 
-		#rospy.sleep(1)
-		current = came_from[current]
-		path.append(current)
+		try:
+			#print current 
+			#rospy.sleep(1)
+			current = came_from[current]
+			path.append(current)
+			print len(path)
+		#If the current coordinates is not included within the map
+		except KeyError:
+			print came_from
 	#path.append(start)
 	path.reverse()
 	return path
 
 def aStar(start, goal, grid, wall):
+	#Makes sure the values given are tuples
 	init = (start[0], start[1], start[2])
 	end = (goal[0], goal[1], goal[2])
 	origin = Node(init, init, end, grid, wall)
 	fron, prev = Solve(origin, init, end)
+	print "aStar Solution"
 	solution = reconstruct_path(fron, init, end)
 	print solution
 	#rospy.sleep(1)
