@@ -8,7 +8,6 @@ from std_msgs.msg import String, Header
 from geometry_msgs.msg import Twist, Point, Pose, PoseStamped, PoseWithCovarianceStamped, Point, Quaternion
 from kobuki_msgs.msg import BumperEvent
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
-from newastar import aStar
 
 def checkerFrontier(maps, grid):
 	frontiers = []
@@ -34,19 +33,22 @@ def checkerFrontier(maps, grid):
 	return frontiers
 
 def checkClosestFrontier(frontiers, current, grid, wall):
-	cP = []
-	uselessData = {}
-	pP = []
+	cX = 0
+	cY = 0
+	pX = 0
+	pY = 0
 	closest = 0
 	goal = 0
 	for i in frontiers:
-		goal = (i.x, i.y, i.z)
-		cP, uselessData = aStar(current, goal, grid, wall)
+		cX = i.x
+		cY = i.y
 		if(closest == 0):
-			pP = cP
+			pX = cX
+			py = cY
 			closest = (i.x, i.y)
-		elif(len(cP) < len(pP) and len(cP) < len(pP)):
-			pP = cP
+		elif(len(cX) < len(pX) and len(cY) < len(pY)):
+			pX = cX
+			py = cY
 			closest = (i.x, i.y)
 	return closest
 
