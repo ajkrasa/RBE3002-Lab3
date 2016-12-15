@@ -88,10 +88,8 @@ def worldToGrid(worldPoint, worldMap):
 def gridToWorld(gridPoint, worldMap):
 	#print gridPoint
 	gridx = float(gridPoint[0])
-	if(gridPoint[1] > 0):
-		gridy = float(gridPoint[1])
-	else:
-		print "Tuple Trouble"
+	gridy = float(gridPoint[1])
+	
 	res = worldMap.info.resolution
 	#print res
 	worldPoint = Point()
@@ -377,8 +375,10 @@ def readBumper(msg):
 	if (msg.state == 1):
         # When pressed the wheels will immediatley stop moving and will not move until the button is no longer being pressed
 		print "Bumper pressed!"
-		#Replace       
-		executeTrajectory()
+		#Replace      
+		rotate(90)
+		driveStraight(0.1, 1) 
+		at_goal = True
 
 
 # Odometry Callback function.
@@ -456,7 +456,7 @@ def run():
 	navgoal_sub = rospy.Subscriber('/move_base_simple/2goal', PoseStamped, goalCallback, queue_size=1) #change topic for best results
 	goal_sub = rospy.Subscriber('/initialpose', PoseWithCovarianceStamped, readStart, queue_size=1) #change topic for best results
 	cost_pub = rospy.Subscriber('/move_base/local_costmap/costmap', OccupancyGrid, costMapCallback)
-	#bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
+	bumper_sub = rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, readBumper, queue_size=1)#
 
 	
 	pubway = rospy.Publisher("/waypoints", GridCells, queue_size=1)
@@ -513,10 +513,10 @@ def run():
 		d_t = math.degrees(y_t)
 		origin_cache.append(d_t)
 		res = map_cache.info.resolution
-		print start_cache
-		print origin_cache
+		#print start_cache
+		#print origin_cache
 		map_origin = (int(-origin_cache[0]/res), int(-origin_cache[1]/res), 0)
-		print map_origin
+		#print map_origin
 		start_cc = [int(start_cache[0]/res) + map_origin[0], int(start_cache[1]/res) + map_origin[1], 0]
 		goal_cache = checkClosestFrontier(frontiers, start_cache, map_cache, wall)
 		print goal_cache

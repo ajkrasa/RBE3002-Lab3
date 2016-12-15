@@ -22,8 +22,8 @@ def checkerFrontier(maps, grid):
 			#print k # used for debugging
 			if (grid[i*width+j] == -1 and x == 0):
 					point=Point()
-					point.x=((j-3)*resolution)+offsetX + (.5 * resolution)
-					point.y=((i-3)*resolution)+offsetY + (.5 * resolution)
+					point.x=((j)*resolution)+offsetX + (.5 * resolution)
+					point.y=((i)*resolution)+offsetY + (.5 * resolution)
 					point.z=0
 					
 					frontiers.append(point)
@@ -40,13 +40,13 @@ def checkClosestFrontier(frontiers, current, grid, wall):
 	closest = 0
 	goal = 0
 	for i in frontiers:
-		cX = i.x
-		cY = i.y
+		cX = abs(i.x - current[0])
+		cY = abs(i.y - current[1])
 		if(closest == 0):
 			pX = cX
 			py = cY
 			closest = (i.x, i.y)
-		elif(len(cX) < len(pX) and len(cY) < len(pY)):
+		elif(cX < pX and cY < pY):
 			pX = cX
 			py = cY
 			closest = (i.x, i.y)
