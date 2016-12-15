@@ -32,7 +32,7 @@ def checkerFrontier(maps, grid):
 				x -= 1
 	return frontiers
 
-def checkClosestFrontier(frontiers, current, grid, wall):
+def checkClosestFrontier(frontiers, res, map_origin, current, grid, wall):
 	cX = 0
 	cY = 0
 	pX = 0
@@ -40,13 +40,18 @@ def checkClosestFrontier(frontiers, current, grid, wall):
 	closest = 0
 	goal = 0
 	for i in frontiers:
-		cX = abs(i.x - current[0])
-		cY = abs(i.y - current[1])
+		goal_cc = [int(i.x/res) + map_origin[0], int(i.y/res) + map_origin[1], 0]
+		cX = abs(goal_cc[0] - current[0])
+		cY = abs(goal_cc[1] - current[1])	
+		#print cX, cY
 		if(closest == 0):
+			#print "yo"
+			#print pX, pY
 			pX = cX
 			py = cY
 			closest = (i.x, i.y)
-		elif(cX < pX and cY < pY):
+		elif(cX <= pX and cY <= pY):
+			print "hey"
 			pX = cX
 			py = cY
 			closest = (i.x, i.y)
